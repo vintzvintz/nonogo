@@ -6,10 +6,6 @@ import (
 	"time"
 )
 
-//"fmt"
-//"sync"
-//"time"
-
 func SolveSimple(prob Probleme) chan *TabJeu {
 	solutions := make(chan *TabJeu)
 	allBlocs := allPossibleBlocs{
@@ -97,15 +93,12 @@ func filtreColonnes(tjPartiel TabJeu, colonnes lineListSet) (filteredCols lineLi
 		}
 		filteredCols[iCol] = validCols
 	}
-	// implicit return
 	return filteredCols, true
 }
 
 type PerfCounter struct {
 	lock  sync.Mutex
 	count int64
-	//	lastCount int64
-	//	lastTime time.Time
 }
 
 func (pc *PerfCounter) Inc() {

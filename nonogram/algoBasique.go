@@ -9,7 +9,6 @@ import (
 func makeTache(taille int,
 	apl *lineListSet,
 	idx []int,
-	//seqColonnes []seqCount,
 	testFunc func(tj *TabJeu) bool,
 	out chan *TabJeu) func() {
 
@@ -22,7 +21,6 @@ func makeTache(taille int,
 		}
 		// teste si tj est une solution valide
 		if testFunc(&tj) {
-			//if tj.CompteBlocsCompare(seqColonnes) {
 			out <- &tj
 		}
 	}
@@ -78,7 +76,6 @@ func SolveBourrin(prob Probleme) chan *TabJeu {
 				task()
 				nb++
 			}
-			//fmt.Printf("Worker %d terminé après %d taches\n", id, nb)
 			wg.Done()
 		}(workerId, jobsC)
 	}

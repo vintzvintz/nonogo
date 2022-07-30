@@ -1,7 +1,6 @@
 package nonogram
 
 import (
-	//"fmt"
 	"sync"
 )
 
@@ -78,13 +77,11 @@ func solveRecursifConcurrent(allBlocs *allPossibleBlocs,
 		if !ok {
 			continue
 		}
-
 		// on a trouvé une solution si toutes les lignes sont remplies
 		if len(tjNext) == taille {
 			solutions <- (*TabJeu)(&tjNext)
 			continue
 		}
-
 		// sinon on continue sur la ligne suivante
 		nextTask := func() {
 			solveRecursifConcurrent(
@@ -97,42 +94,11 @@ func solveRecursifConcurrent(allBlocs *allPossibleBlocs,
 		}
 		nextTasks = append(nextTasks, nextTask)
 	}
-	//	fmt.Printf("%d taches créées\n", len(nextTasks))
 	wg.Add(len(nextTasks))
 	go func() {
 		for _, task := range nextTasks {
 			workQueue <- task // ajoute la tache avec une coroutine
 		}
-		//fmt.Printf("%d tâches ajoutées à la queue\n", len(nextTasks))
+		// // fmt.Printf("%d tâches ajoutées à la queue\n", len(nextTasks))
 	}()
 }
-
-/*
-type WorkQueue struct{
-	out chan func()
-	in chan func()
-	queue []func
-}
-
-
-func NewWorkQueue() *WorkQueue {
-	var wq WorkQueue
-
-
-func ( wq *WorkQueue ) Start() {
-	// transfere les
-	go func() {
-		for {
-			select
-			out <- wq.queue[0]
-			wq = wq[1:]
-		}
-		close(out)  // inutile car wq.in n'est jamais fermé....
-	}
-}
-
-
-func (wq *WorkQueue ) append( newJobs []func() ) {
-	wq.queue = append( wq.queue, newJobs... )
-
-}*/
