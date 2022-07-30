@@ -90,9 +90,7 @@ func (tj TabJeu) String() string {
 
 func (c cellule) String() string {
 	tBase := [...]rune{' ', '\u2588'}
-	//tJoué := [...]rune{' ', 'x', '\u2588'}
 
 	s := fmt.Sprintf("%c%c", tBase[c.base], tBase[c.base])
-	//s := fmt.Sprintf("%c%c", tBase[c.base], tJoué[c.joué])
 	return s
 }
