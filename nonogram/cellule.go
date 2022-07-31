@@ -39,8 +39,11 @@ func (c cellule) estPlein() bool {
 }
 
 // NewTabJeu crée un nouveau tableau de jeu
-func NewTabJeu(taille int, ratioRemplissage int) TabJeu {
-	rand.Seed(time.Now().Unix())
+func NewTabJeu(taille int, ratioRemplissage int, seed int64) TabJeu {
+	if seed == 0 {
+		seed = time.Now().Unix()
+	}
+	rand.Seed(seed)
 
 	// tableau de jeu représenté par un slice à 2 dimensions
 	tj := make(TabJeu, taille)
