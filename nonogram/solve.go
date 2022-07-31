@@ -32,21 +32,18 @@ type allPossibleBlocs struct {
 
 type SolverFunc func(Probleme) chan *TabJeu
 
-var perfCounter PerfCounter
-
 func Bench(prob Probleme) {
 
 	//BenchSolver(SolveBourrin, prob, "Bourrin")
 
-	perfCounter.Start(time.Second)
-
-	tests := []int{8, 6, 4, 2, 1}
+	//	tests := []int{8, 6, 4, 2, 1}
+	tests := []int{0, 1, 2, 8}
 	for _, nb := range tests {
 		txt := fmt.Sprintf("%d workers", nb)
 		solver := makeConcurrentSolver(nb)
+
 		BenchSolver(solver, prob, txt)
 	}
-	BenchSolver(SolveSimple, prob, "Récursif simple")
 }
 
 func BenchSolver(solver SolverFunc, prob Probleme, txt string) {

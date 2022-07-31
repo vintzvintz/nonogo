@@ -2,7 +2,13 @@ package nonogram
 
 import (
 	"sync"
+	"time"
 )
+
+type WorkQueue struct {
+	ch chan func()     // queue d'entree du worker pool
+	wg *sync.WaitGroup // attend la fin de la recursion
+}
 
 func makeConcurrentSolver(nbWorkers int) SolverFunc {
 	solver := func(prob Probleme) chan *TabJeu {
@@ -18,30 +24,47 @@ func SolveConcurrent(prob Probleme, nbWorkers int) chan *TabJeu {
 		cols: buildAllSequences(prob.taille, prob.seqColonnes),
 	}
 
-	// waitGroup pour attendre la fin de la recursion
-	wg := new(sync.WaitGroup)
+	var workQueue WorkQueue
 
-	// queue d'entree du worker pool
-	workQueue := make(chan func())
+	if nbWorkers > 0 {
+		workQueue.wg = new(sync.WaitGroup)
+		workQueue.ch = make(chan func())
 
-	// lance les workers
-	for i := 0; i < nbWorkers; i++ {
-		go func(id int) {
-			for tache := range workQueue {
-				tache()
-				wg.Done()
-			}
-		}(i)
+		// lance les workers
+		for i := 0; i < nbWorkers; i++ {
+			go func(id int) {
+				for tache := range workQueue.ch {
+					tache()
+					workQueue.wg.Done()
+				}
+			}(i)
+		}
+	}
+
+	perf := NewPerfCounter(time.Second / 10)
+
+	termine := func() {
+		close(solutions)
+		perf.Stop()
 	}
 
 	// lance la recherche
-	solveRecursifConcurrent(&allBlocs, nil, allBlocs.cols, workQueue, wg, solutions)
+	if nbWorkers == 0 {
+		go func() {
+			// bloquante jusqu'à la fin de la recherche (car workqueue est vide)
+			solveRecursifConcurrent(&allBlocs, nil, allBlocs.cols, workQueue, solutions, perf)
+			termine()
+		}()
+	} else {
+		// retourne immediatement
+		solveRecursifConcurrent(&allBlocs, nil, allBlocs.cols, workQueue, solutions, perf)
 
-	// attend la fin du traitment et ferme le channel
-	go func() {
-		wg.Wait()
-		close(solutions)
-	}()
+		// attend la fin du traitment pour fermer le channel
+		go func() {
+			workQueue.wg.Wait()
+			termine()
+		}()
+	}
 
 	return solutions
 }
@@ -49,9 +72,9 @@ func SolveConcurrent(prob Probleme, nbWorkers int) chan *TabJeu {
 func solveRecursifConcurrent(allBlocs *allPossibleBlocs,
 	tjPartiel TabJeu,
 	colonnes lineListSet,
-	workQueue chan func(),
-	wg *sync.WaitGroup,
-	solutions chan *TabJeu) {
+	wq WorkQueue,
+	solutions chan *TabJeu,
+	perf *PerfCounter) {
 
 	taille := len(allBlocs.rows)
 	idxLigneCourante := len(tjPartiel)
@@ -61,6 +84,9 @@ func solveRecursifConcurrent(allBlocs *allPossibleBlocs,
 
 	// essaye toutes le combinaisons possibles pour la ligne courante
 	for n, nextLigne := range tryLines {
+
+		// pour mesurer la vitesse
+		perf.Inc()
 
 		// cree une copie du tj partiel reçu du parent, et ajoute la ligne courante
 		tjNext := make(TabJeu, idxLigneCourante+1)
@@ -88,17 +114,61 @@ func solveRecursifConcurrent(allBlocs *allPossibleBlocs,
 				allBlocs,
 				tjNext,
 				nextColonnes,
-				workQueue,
-				wg,
-				solutions)
+				wq,
+				solutions,
+				perf)
 		}
 		nextTasks = append(nextTasks, nextTask)
 	}
-	wg.Add(len(nextTasks))
-	go func() {
-		for _, task := range nextTasks {
-			workQueue <- task // ajoute la tache avec une coroutine
+
+	// recherche concurrente
+	if wq.wg != nil {
+		// envoi non bloquant des taches aux workers
+		wq.wg.Add(len(nextTasks))
+		go func() {
+			for _, task := range nextTasks {
+				wq.ch <- task
+			}
+		}()
+		return
+	}
+
+	// recherche recursive classique (depth-first)
+	for _, task := range nextTasks {
+		task() // traite immédiatement / bloquant
+	}
+}
+
+func filtreColonnes(tjPartiel TabJeu, colonnes lineListSet) (filteredCols lineListSet, ok bool) {
+
+	taille := len(colonnes)
+
+	/// dernière ligne placée ( = ligne courante de cette fonction )
+	idxLine := len(tjPartiel) - 1
+	lastLine := tjPartiel[idxLine]
+
+	// filteredCols va recevoir les colonnes valides avec la ligne courante
+	filteredCols = make(lineListSet, taille)
+	for iCol := 0; iCol < taille; iCol++ {
+
+		// toutes les possibilités valides pour la colonne iCol
+		validCols := make(lineList, 0, len(colonnes[iCol]))
+
+		cell_ligne := lastLine[iCol].estPlein()
+
+		for _, col := range colonnes[iCol] {
+			cell_col := col[idxLine].estPlein()
+			colOk := (cell_ligne == cell_col)
+			if colOk {
+				validCols = append(validCols, col)
+			}
 		}
-		// // fmt.Printf("%d tâches ajoutées à la queue\n", len(nextTasks))
-	}()
+
+		// inutile de continuer dès qu'une colonne est incompatible avec la ligne ajoutée
+		if len(validCols) == 0 {
+			return nil, false
+		}
+		filteredCols[iCol] = validCols
+	}
+	return filteredCols, true
 }
