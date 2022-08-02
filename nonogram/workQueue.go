@@ -45,9 +45,7 @@ func (wp* WorkerPool) AddTasks( tasks []func() ) {
 			wp.ch <- t
 		}
 	}()
-
 }
-
 
 func (wp* WorkerPool) Wait() {
 	wp.wg.Wait()
