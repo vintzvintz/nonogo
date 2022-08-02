@@ -32,5 +32,5 @@ func TestMain(t *testing.T) {
 	tj := NewTabJeu(15, 45, 1003)
 	tj.AfficheAvecComptes()
 	prob := tj.MakeProbleme()
-	Bench(prob)
+	Bench(prob, false)
 }

@@ -1,51 +1,32 @@
 package nonogram
 
 import (
-	"sync"
 	"time"
 )
-
-type WorkQueue struct {
-	ch chan func()     // queue d'entree du worker pool
-	wg *sync.WaitGroup // attend la fin de la recursion
-}
 
 type IdxCols []int
 type IdxColsSet []IdxCols
 
-func makeConcurrentSolver(nbWorkers int) SolverFunc {
+func makeConcurrentSolver(nbWorkers int, showPerf bool) SolverFunc {
 	solver := func(prob Probleme) chan *TabJeu {
-		return SolveConcurrent(prob, nbWorkers)
+		return SolveConcurrent(prob, nbWorkers, showPerf)
 	}
 	return solver
 }
 
-func SolveConcurrent(prob Probleme, nbWorkers int) chan *TabJeu {
+func SolveConcurrent(prob Probleme, nbWorkers int, showPerf bool) chan *TabJeu {
 	solutions := make(chan *TabJeu)
 	allBlocs := allPossibleBlocs{
 		rows: buildAllSequences(prob.taille, prob.seqLignes),
 		cols: buildAllSequences(prob.taille, prob.seqColonnes),
 	}
 
-	var workQueue WorkQueue
-	workQueue.wg = new(sync.WaitGroup)
-	// recursion monothread classique si workQueue.ch = nil
+	var workerPool *WorkerPool = NewWorkQueue(nbWorkers)
 
-	if nbWorkers > 0 {
-		workQueue.ch = make(chan func())
-
-		// lance les workers
-		for i := 0; i < nbWorkers; i++ {
-			go func(id int) {
-				for tache := range workQueue.ch {
-					tache()
-					workQueue.wg.Done()
-				}
-			}(i)
-		}
+	var perf *PerfCounter
+	if showPerf {
+		perf = NewPerfCounter(time.Second)
 	}
-
-	perf := NewPerfCounter(time.Second)
 
 	// prepare la liste initiale des colonnes valides = toutes les combinaisons possibles
 	allCols := allBlocs.cols
@@ -58,25 +39,29 @@ func SolveConcurrent(prob Probleme, nbWorkers int) chan *TabJeu {
 		colonnes[numCol] = colsN
 	}
 
-	// lance la recherche
-	if workQueue.ch == nil {
-		workQueue.wg.Add(1)
-		go func() {
-			// bloque jusqu'à la fin de la recherche, car workqueue.ch == nil
-			solveRecursif(&allBlocs, nil, colonnes, workQueue, solutions, perf)
-			workQueue.wg.Done()
-		}()
-	} else {
-		// lance la recherche. nonbloquant car workQueue.ch != nil
-		solveRecursif(&allBlocs, nil, colonnes, workQueue, solutions, perf)
+	termine := func() {
+		close(solutions)
+		if perf != nil {
+			perf.Stop()
+		}
 	}
 
-	// attend la fin du traitment pour fermer le channel
-	go func() {
-		workQueue.wg.Wait()
-		close(solutions)
-		perf.Stop()
-	}()
+	// lance la recherche
+	if workerPool != nil {
+		// recursion concurrente
+		solveRecursif(&allBlocs, nil, colonnes, workerPool, solutions, perf)
+		// attend la fin du traitment pour fermer le channel
+		go func() {
+			workerPool.Wait()
+			termine()
+		}()
+	} else {
+		go func(){
+			// recursion bloquante classique
+			solveRecursif(&allBlocs, nil, colonnes, nil, solutions, perf)
+			termine()
+		}()
+	}
 
 	return solutions
 }
@@ -84,7 +69,7 @@ func SolveConcurrent(prob Probleme, nbWorkers int) chan *TabJeu {
 func solveRecursif(allBlocs *allPossibleBlocs,
 	tjPartiel []int, // index (dans allBlocs) des lignes déja placées
 	colonnes IdxColsSet, // index dans allBlocs des colonnes encore valides
-	wq WorkQueue,
+	wp *WorkerPool,
 	solutions chan *TabJeu,
 	perf *PerfCounter) {
 
@@ -92,12 +77,18 @@ func solveRecursif(allBlocs *allPossibleBlocs,
 	numLigneCourante := len(tjPartiel)
 	tryLines := (*allBlocs).rows[numLigneCourante]
 
-	nextTasks := make([]func(), 0, len(tryLines))
+	// alloue un tableau de fonctions pour poursuivre la recherche
+	var nextTasks []func()
+	if wp != nil {
+		nextTasks = make([]func(), 0, len(tryLines))
+	}
 
 	// essaye toutes le combinaisons possibles pour la ligne courante
 	for n, nextLigne := range tryLines {
 
-		perf.Inc() // pour mesurer la vitesse
+		if perf != nil {
+			perf.Inc() // pour mesurer la vitesse
+		}
 
 		// parmi les colonnes reçues du parent, elimine celles incompatibles avec nextLine
 		nextColonnes, ok := filtreColonnes(allBlocs, nextLigne, numLigneCourante, colonnes)
@@ -108,6 +99,7 @@ func solveRecursif(allBlocs *allPossibleBlocs,
 		}
 
 		// copie le tj partiel reçu du parent et ajoute la ligne courante
+		// TODO make/copy en une seule fois
 		tjNext := make([]int, numLigneCourante+1)
 		copy(tjNext, tjPartiel)
 		tjNext[numLigneCourante] = n // index d'une ligne dans allBlocs.rows
@@ -120,25 +112,23 @@ func solveRecursif(allBlocs *allPossibleBlocs,
 
 		// prepare la recherche sur les lignes restantes
 		nextTask := func() {
-			solveRecursif(allBlocs, tjNext, nextColonnes, wq, solutions, perf)
+			solveRecursif(allBlocs, tjNext, nextColonnes, wp, solutions, perf)
 		}
 
-		if wq.ch == nil {
-			// execution immediate (bloquante) : recursion classique mono-thread
-			nextTask()
-		} else {
+		if wp != nil {
 			// execution différée pour recursion concurrente : ajoute à la liste des tâches à traiter
 			nextTasks = append(nextTasks, nextTask)
+		} else {
+			// execution immediate (bloquante) : recursion classique mono-thread
+			nextTask()
 		}
 	}
 
 	// envoi des tâches au pool de workers
-	wq.wg.Add(len(nextTasks))
-	go func() {
-		for _, task := range nextTasks {
-			wq.ch <- task
-		}
-	}()
+	if wp != nil {
+		wp.AddTasks(nextTasks)
+	}
+
 }
 
 func filtreColonnes(allBlocs *allPossibleBlocs,
@@ -153,6 +143,7 @@ func filtreColonnes(allBlocs *allPossibleBlocs,
 	for numCol := 0; numCol < taille; numCol++ {
 
 		// validCols va contenir toutes possibilités encore valides pour la colonne iCol
+		// TODO allouer en une seule fois
 		validCols := make(IdxCols, 0, len(colonnes[numCol]))
 
 		cellLignePlein := ligne[numCol].estPlein()
