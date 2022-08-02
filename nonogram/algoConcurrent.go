@@ -10,6 +10,9 @@ type WorkQueue struct {
 	wg *sync.WaitGroup // attend la fin de la recursion
 }
 
+type IdxCols []int
+type IdxColsSet []IdxCols
+
 func makeConcurrentSolver(nbWorkers int) SolverFunc {
 	solver := func(prob Probleme) chan *TabJeu {
 		return SolveConcurrent(prob, nbWorkers)
@@ -25,9 +28,10 @@ func SolveConcurrent(prob Probleme, nbWorkers int) chan *TabJeu {
 	}
 
 	var workQueue WorkQueue
+	workQueue.wg = new(sync.WaitGroup)
+	// recursion monothread classique si workQueue.ch = nil
 
 	if nbWorkers > 0 {
-		workQueue.wg = new(sync.WaitGroup)
 		workQueue.ch = make(chan func())
 
 		// lance les workers
@@ -41,89 +45,95 @@ func SolveConcurrent(prob Probleme, nbWorkers int) chan *TabJeu {
 		}
 	}
 
-	perf := NewPerfCounter(time.Second / 10)
+	perf := NewPerfCounter(time.Second)
 
-	termine := func() {
-		close(solutions)
-		perf.Stop()
+	// prepare la liste initiale des colonnes valides = toutes les combinaisons possibles
+	allCols := allBlocs.cols
+	colonnes := make(IdxColsSet, prob.taille)
+	for numCol := range allCols {
+		colsN := make(IdxCols, len(allCols[numCol]))
+		for n := range allCols[numCol] {
+			colsN[n] = n
+		}
+		colonnes[numCol] = colsN
 	}
 
 	// lance la recherche
-	if nbWorkers == 0 {
+	if workQueue.ch == nil {
+		workQueue.wg.Add(1)
 		go func() {
-			// bloquante jusqu'à la fin de la recherche (car workqueue est vide)
-			solveRecursifConcurrent(&allBlocs, nil, allBlocs.cols, workQueue, solutions, perf)
-			termine()
+			// bloque jusqu'à la fin de la recherche, car workqueue.ch == nil
+			solveRecursif(&allBlocs, nil, colonnes, workQueue, solutions, perf)
+			workQueue.wg.Done()
 		}()
 	} else {
-		// retourne immediatement
-		solveRecursifConcurrent(&allBlocs, nil, allBlocs.cols, workQueue, solutions, perf)
-
-		// attend la fin du traitment pour fermer le channel
-		go func() {
-			workQueue.wg.Wait()
-			termine()
-		}()
+		// lance la recherche. nonbloquant car workQueue.ch != nil
+		solveRecursif(&allBlocs, nil, colonnes, workQueue, solutions, perf)
 	}
+
+	// attend la fin du traitment pour fermer le channel
+	go func() {
+		workQueue.wg.Wait()
+		close(solutions)
+		perf.Stop()
+	}()
 
 	return solutions
 }
 
-func solveRecursifConcurrent(allBlocs *allPossibleBlocs,
-	tjPartiel TabJeu,
-	colonnes lineListSet,
+func solveRecursif(allBlocs *allPossibleBlocs,
+	tjPartiel []int, // index (dans allBlocs) des lignes déja placées
+	colonnes IdxColsSet, // index dans allBlocs des colonnes encore valides
 	wq WorkQueue,
 	solutions chan *TabJeu,
 	perf *PerfCounter) {
 
 	taille := len(allBlocs.rows)
-	idxLigneCourante := len(tjPartiel)
-	tryLines := (*allBlocs).rows[idxLigneCourante]
+	numLigneCourante := len(tjPartiel)
+	tryLines := (*allBlocs).rows[numLigneCourante]
 
-	nextTasks := make([]func(), 0, taille)
+	nextTasks := make([]func(), 0, len(tryLines))
 
 	// essaye toutes le combinaisons possibles pour la ligne courante
 	for n, nextLigne := range tryLines {
 
-		// pour mesurer la vitesse
-		perf.Inc()
+		perf.Inc() // pour mesurer la vitesse
 
-		// cree une copie du tj partiel reçu du parent, et ajoute la ligne courante
-		tjNext := make(TabJeu, idxLigneCourante+1)
-		copy(tjNext, tjPartiel)
-		tjNext[idxLigneCourante] = nextLigne
+		// parmi les colonnes reçues du parent, elimine celles incompatibles avec nextLine
+		nextColonnes, ok := filtreColonnes(allBlocs, nextLigne, numLigneCourante, colonnes)
 
-		// copie seulement les colonnes compatibles avec la ligne ajoutée
-		nextColonnes, ok := filtreColonnes(tjNext, colonnes)
-
-		_ = n
-		//fmt.Printf("ligne %d, combinaison %d/%d, resultat %v\n", idxLigneCourante, n+1, len(tryLines), ok)
-
-		// on arrete la récursion si nextLigne est incompatible avec les colonnes possibles
+		// abandonne nextLigne s'il n'y a plus de colonnes valides
 		if !ok {
 			continue
 		}
+
+		// copie le tj partiel reçu du parent et ajoute la ligne courante
+		tjNext := make([]int, numLigneCourante+1)
+		copy(tjNext, tjPartiel)
+		tjNext[numLigneCourante] = n // index d'une ligne dans allBlocs.rows
+
 		// on a trouvé une solution si toutes les lignes sont remplies
-		if len(tjNext) == taille {
-			solutions <- (*TabJeu)(&tjNext)
+		if len(tjNext) == taille-1 {
+			solutions <- tabJeuFromIndex(allBlocs, tjNext)
 			continue
 		}
-		// sinon on continue sur la ligne suivante
+
+		// prepare la recherche sur les lignes restantes
 		nextTask := func() {
-			solveRecursifConcurrent(
-				allBlocs,
-				tjNext,
-				nextColonnes,
-				wq,
-				solutions,
-				perf)
+			solveRecursif(allBlocs, tjNext, nextColonnes, wq, solutions, perf)
 		}
-		nextTasks = append(nextTasks, nextTask)
+
+		if wq.ch == nil {
+			// execution immediate (bloquante) : recursion classique mono-thread
+			nextTask()
+		} else {
+			// execution différée pour recursion concurrente : ajoute à la liste des tâches à traiter
+			nextTasks = append(nextTasks, nextTask)
+		}
 	}
 
-	// recherche concurrente
+	// envoi des tâches au pool de workkers (recherche concurrente)
 	if wq.wg != nil {
-		// envoi non bloquant des taches aux workers
 		wq.wg.Add(len(nextTasks))
 		go func() {
 			for _, task := range nextTasks {
@@ -132,43 +142,47 @@ func solveRecursifConcurrent(allBlocs *allPossibleBlocs,
 		}()
 		return
 	}
-
-	// recherche recursive classique (depth-first)
-	for _, task := range nextTasks {
-		task() // traite immédiatement / bloquant
-	}
 }
 
-func filtreColonnes(tjPartiel TabJeu, colonnes lineListSet) (filteredCols lineListSet, ok bool) {
+func filtreColonnes(allBlocs *allPossibleBlocs,
+	ligne LigneJeu,
+	numLigne int,
+	colonnes IdxColsSet) (filteredCols IdxColsSet, ok bool) {
 
 	taille := len(colonnes)
 
-	/// dernière ligne placée ( = ligne courante de cette fonction )
-	idxLine := len(tjPartiel) - 1
-	lastLine := tjPartiel[idxLine]
-
 	// filteredCols va recevoir les colonnes valides avec la ligne courante
-	filteredCols = make(lineListSet, taille)
-	for iCol := 0; iCol < taille; iCol++ {
+	filteredCols = make(IdxColsSet, taille)
+	for numCol := 0; numCol < taille; numCol++ {
 
-		// toutes les possibilités valides pour la colonne iCol
-		validCols := make(lineList, 0, len(colonnes[iCol]))
+		// validCols va contenir toutes possibilités encore valides pour la colonne iCol
+		validCols := make(IdxCols, 0, len(colonnes[numCol]))
 
-		cell_ligne := lastLine[iCol].estPlein()
+		cellLignePlein := ligne[numCol].estPlein()
 
-		for _, col := range colonnes[iCol] {
-			cell_col := col[idxLine].estPlein()
-			colOk := (cell_ligne == cell_col)
-			if colOk {
-				validCols = append(validCols, col)
+		for _, n := range colonnes[numCol] {
+			col := (*allBlocs).cols[numCol][n]
+			cellColPlein := col[numLigne].estPlein()
+			if cellLignePlein == cellColPlein {
+				validCols = append(validCols, n)
 			}
 		}
 
-		// inutile de continuer dès qu'une colonne est incompatible avec la ligne ajoutée
+		// arrete dès qu'une colonne est incompatible avec la ligne ajoutée
 		if len(validCols) == 0 {
 			return nil, false
 		}
-		filteredCols[iCol] = validCols
+		filteredCols[numCol] = validCols
 	}
 	return filteredCols, true
+}
+
+// tabJeuFromIndex construit un tabJeu à partir des index de lignes
+func tabJeuFromIndex(allBlocs *allPossibleBlocs, index []int) *TabJeu {
+	taille := len(index)
+	tj := make(TabJeu, taille)
+	for n, i := range index {
+		tj[n] = (*allBlocs).rows[n][i]
+	}
+	return &tj
 }
