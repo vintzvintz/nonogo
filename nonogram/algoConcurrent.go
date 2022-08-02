@@ -132,16 +132,13 @@ func solveRecursif(allBlocs *allPossibleBlocs,
 		}
 	}
 
-	// envoi des tâches au pool de workkers (recherche concurrente)
-	if wq.wg != nil {
-		wq.wg.Add(len(nextTasks))
-		go func() {
-			for _, task := range nextTasks {
-				wq.ch <- task
-			}
-		}()
-		return
-	}
+	// envoi des tâches au pool de workers
+	wq.wg.Add(len(nextTasks))
+	go func() {
+		for _, task := range nextTasks {
+			wq.ch <- task
+		}
+	}()
 }
 
 func filtreColonnes(allBlocs *allPossibleBlocs,
