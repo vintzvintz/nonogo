@@ -5,7 +5,7 @@ import (
 )
 
 func main() {
-	tj := nonogram.NewTabJeu(14, 42, 1001)
+	tj := nonogram.NewTabJeu(15, 45, 1003)
 	tj.AfficheAvecComptes()
 	prob := tj.MakeProbleme()
 	nonogram.Bench(prob)

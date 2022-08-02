@@ -36,12 +36,10 @@ func Bench(prob Probleme) {
 
 	//BenchSolver(SolveBourrin, prob, "Bourrin")
 
-	//	tests := []int{8, 6, 4, 2, 1}
-	tests := []int{0, 1, 2, 8}
+	tests := []int{0, 1,2,3,4,5,6,12}
 	for _, nb := range tests {
 		txt := fmt.Sprintf("%d workers", nb)
 		solver := makeConcurrentSolver(nb)
-
 		BenchSolver(solver, prob, txt)
 	}
 }
@@ -77,7 +75,7 @@ func buildAllSequences(taille int, seqs []seqCount) lineListSet {
 		}(taille, seqs[i], i)
 	}
 
-	// concatene les resultats pour chaque sequence de longueurs de blocs
+	// reçoit les resultats pour chaque ligne
 	go func() {
 		for lines := range ch {
 			result[lines.num] = lines.lines

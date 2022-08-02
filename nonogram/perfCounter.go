@@ -48,7 +48,7 @@ func (pc *PerfCounter) start(interval time.Duration) {
 				count := pc.get()
 				rate := (count - lastCount) * 1e6 / now.Sub(lastTime).Nanoseconds()
 				lastTime, lastCount = now, count
-				fmt.Printf("Vitesse %d k/s\r", rate)
+				fmt.Printf("Vitesse %d k/s      \r", rate)
 			case <-pc.stop:
 				count := pc.get()
 				avg := count * 1e6 / time.Since(startTime).Nanoseconds()
