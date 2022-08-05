@@ -27,7 +27,7 @@ func SolveConcurrent(prob TJ.Probleme, nbWorkers int, showPerf bool) chan *TJ.Ta
 
 	var pc *perf.PerfCounter
 	if showPerf {
-		pc = perf.NewPerfCounter(time.Second)
+		pc = perf.NewPerfCounter(time.Second, nil)
 	}
 
 	// prepare la liste initiale des colonnes valides = toutes les combinaisons possibles
