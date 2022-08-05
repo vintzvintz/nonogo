@@ -1,13 +1,14 @@
-package nonogram
+package solver
 
 import (
 	"fmt"
 	"time"
+	TJ "vintz.fr/nonogram/tabjeu"
 )
 
 // lineList est une liste de lignes
 // contrairement à TabJeu la largeur n'est pas forcément égale à la hauteur
-type lineList []LigneJeu
+type lineList []TJ.LigneJeu
 
 // allPossibleLines est un slice de la même longueur que TabJeu
 // chaque élement est l'ensemble des valeurs possibles pour la ligne correspondante
@@ -21,21 +22,21 @@ type indexedLineSet struct {
 
 // cellVide et cellPlein sont les éléments de base pour construire les sequences possibles
 // on aurait aussi bien pu utiliser des booleéns à la place des pointeurs
-var cellVide = &cellule{base: vide, joué: blanc}
-var cellPlein = &cellule{base: plein, joué: blanc}
+var cellVide = &TJ.Cellule{Base: TJ.Vide, Joué: TJ.Blanc}
+var cellPlein = &TJ.Cellule{Base: TJ.Plein, Joué: TJ.Blanc}
 
 type allPossibleBlocs struct {
 	rows lineListSet
 	cols lineListSet
 }
 
-type SolverFunc func(Probleme) chan *TabJeu
+type SolverFunc func(TJ.Probleme) chan *TJ.TabJeu
 
-func Bench(prob Probleme, showPerf bool) {
+func Bench(prob TJ.Probleme, showPerf bool) {
 
 	//BenchSolver(SolveBourrin, prob, "Bourrin")
 
-	tests := []int{0, 1,2,3,4,5,6,12,6,12,6,12,6,12,6,12,24,24,96,96}
+	tests := []int{12, 0, 1, 2, 3, 4, 5, 6, 12, 6, 12, 6, 12, 6, 12, 6, 12, 24, 24, 96, 96}
 	for _, nb := range tests {
 		txt := fmt.Sprintf("%d workers", nb)
 		solver := makeConcurrentSolver(nb, showPerf)
@@ -43,7 +44,7 @@ func Bench(prob Probleme, showPerf bool) {
 	}
 }
 
-func BenchSolver(solver SolverFunc, prob Probleme, txt string) {
+func BenchSolver(solver SolverFunc, prob TJ.Probleme, txt string) {
 	solutions := solver(prob)
 	var nb int
 	startTime := time.Now()

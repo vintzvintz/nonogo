@@ -1,13 +1,14 @@
-package nonogram
+package solver
 
 import (
 	"testing"
-	//"vintz.fr/gotest/nonogram"
+	TJ "vintz.fr/nonogram/tabjeu"
+
 )
 
 func TestTabJeuCreate(t *testing.T) {
 	taille := 10
-	tj := NewTabJeu(taille, 50, 0)
+	tj := TJ.NewTabJeu(taille, 50, 0)
 	if tj == nil {
 		t.Errorf("Wesh error")
 	}
@@ -21,7 +22,7 @@ func TestTabJeuCreate(t *testing.T) {
 			t.Errorf("Nb colonnes = %d, attendu %d", len(tj), taille)
 		}
 		for _, cell := range ligne {
-			if cell.estPlein() {
+			if cell.EstPlein() {
 				nb_plein++
 			}
 		}
@@ -29,7 +30,7 @@ func TestTabJeuCreate(t *testing.T) {
 }
 
 func TestMain(t *testing.T) {
-	tj := NewTabJeu(15, 45, 1003)
+	tj := TJ.NewTabJeu(15, 40, 1003)
 	tj.AfficheAvecComptes()
 	prob := tj.MakeProbleme()
 	Bench(prob, false)

@@ -1,55 +1,57 @@
-package nonogram
+package solver
 
 import (
 	"time"
+	TJ "vintz.fr/nonogram/tabjeu"
+	perf "vintz.fr/nonogram/perf"
 )
 
 type IdxCols []int
 type IdxColsSet []IdxCols
 
 func makeConcurrentSolver(nbWorkers int, showPerf bool) SolverFunc {
-	solver := func(prob Probleme) chan *TabJeu {
+	solver := func(prob TJ.Probleme) chan *TJ.TabJeu {
 		return SolveConcurrent(prob, nbWorkers, showPerf)
 	}
 	return solver
 }
 
-func SolveConcurrent(prob Probleme, nbWorkers int, showPerf bool) chan *TabJeu {
-	solutions := make(chan *TabJeu)
+func SolveConcurrent(prob TJ.Probleme, nbWorkers int, showPerf bool) chan *TJ.TabJeu {
+	solutions := make(chan *TJ.TabJeu)
 	allBlocs := allPossibleBlocs{
-		rows: buildAllSequences(prob.taille, prob.seqLignes),
-		cols: buildAllSequences(prob.taille, prob.seqColonnes),
+		rows: buildAllSequences(prob.Taille, prob.SeqLignes),
+		cols: buildAllSequences(prob.Taille, prob.SeqColonnes),
 	}
 
 	var workerPool *WorkerPool = NewWorkQueue(nbWorkers)
 
-	var perf *PerfCounter
+	var pc *perf.PerfCounter
 	if showPerf {
-		perf = NewPerfCounter(time.Second)
+		pc = perf.NewPerfCounter(time.Second)
 	}
 
 	// prepare la liste initiale des colonnes valides = toutes les combinaisons possibles
 	allCols := allBlocs.cols
-	colonnes := make(IdxColsSet, prob.taille)
+	colonnes := make(IdxColsSet, prob.Taille)
 	for numCol := range allCols {
 		colsN := make(IdxCols, len(allCols[numCol]))
 		for n := range allCols[numCol] {
 			colsN[n] = n
 		}
-		colonnes[numCol] = colsN
+		colonnes[numCol] = colsN	
 	}
 
 	termine := func() {
 		close(solutions)
-		if perf != nil {
-			perf.Stop()
+		if pc != nil {
+			pc.Stop()
 		}
 	}
 
 	// lance la recherche
 	if workerPool != nil {
 		// recursion concurrente
-		solveRecursif(&allBlocs, nil, colonnes, workerPool, solutions, perf)
+		solveRecursif(&allBlocs, nil, colonnes, workerPool, solutions, pc)
 		// attend la fin du traitment pour fermer le channel
 		go func() {
 			workerPool.Wait()
@@ -58,7 +60,7 @@ func SolveConcurrent(prob Probleme, nbWorkers int, showPerf bool) chan *TabJeu {
 	} else {
 		go func(){
 			// recursion bloquante classique
-			solveRecursif(&allBlocs, nil, colonnes, nil, solutions, perf)
+			solveRecursif(&allBlocs, nil, colonnes, nil, solutions, pc)
 			termine()
 		}()
 	}
@@ -70,8 +72,8 @@ func solveRecursif(allBlocs *allPossibleBlocs,
 	tjPartiel []int, // index (dans allBlocs) des lignes déja placées
 	colonnes IdxColsSet, // index dans allBlocs des colonnes encore valides
 	wp *WorkerPool,
-	solutions chan *TabJeu,
-	perf *PerfCounter) {
+	solutions chan *TJ.TabJeu,
+	perf *perf.PerfCounter) {
 
 	taille := len(allBlocs.rows)
 	numLigneCourante := len(tjPartiel)
@@ -132,7 +134,7 @@ func solveRecursif(allBlocs *allPossibleBlocs,
 }
 
 func filtreColonnes(allBlocs *allPossibleBlocs,
-	ligne LigneJeu,
+	ligne TJ.LigneJeu,
 	numLigne int,
 	colonnes IdxColsSet) (filteredCols IdxColsSet, ok bool) {
 
@@ -146,11 +148,11 @@ func filtreColonnes(allBlocs *allPossibleBlocs,
 		// TODO allouer en une seule fois
 		validCols := make(IdxCols, 0, len(colonnes[numCol]))
 
-		cellLignePlein := ligne[numCol].estPlein()
+		cellLignePlein := ligne[numCol].EstPlein()
 
 		for _, n := range colonnes[numCol] {
 			col := (*allBlocs).cols[numCol][n]
-			cellColPlein := col[numLigne].estPlein()
+			cellColPlein := col[numLigne].EstPlein()
 			if cellLignePlein == cellColPlein {
 				validCols = append(validCols, n)
 			}
@@ -166,9 +168,9 @@ func filtreColonnes(allBlocs *allPossibleBlocs,
 }
 
 // tabJeuFromIndex construit un tabJeu à partir des index de lignes
-func tabJeuFromIndex(allBlocs *allPossibleBlocs, index []int) *TabJeu {
+func tabJeuFromIndex(allBlocs *allPossibleBlocs, index []int) *TJ.TabJeu {
 	taille := len(index)
-	tj := make(TabJeu, taille)
+	tj := make(TJ.TabJeu, taille)
 	for n, i := range index {
 		tj[n] = (*allBlocs).rows[n][i]
 	}

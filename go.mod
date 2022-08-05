@@ -1,3 +1,3 @@
-module vintz.fr/gotest
+module vintz.fr/nonogram
 
 go 1.18

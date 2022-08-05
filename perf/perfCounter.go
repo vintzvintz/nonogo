@@ -1,4 +1,4 @@
-package nonogram
+package perf
 
 import (
 	"fmt"

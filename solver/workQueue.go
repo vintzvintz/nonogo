@@ -1,5 +1,4 @@
-package nonogram
-
+package solver
 
 import (
 	"sync"

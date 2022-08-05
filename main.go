@@ -1,12 +1,13 @@
 package main
 
 import (
-	"vintz.fr/gotest/nonogram"
+	"vintz.fr/nonogram/solver"
+	"vintz.fr/nonogram/tabjeu"
 )
 
 func main() {
-	tj := nonogram.NewTabJeu(15, 45, 1003)
+	tj := tabjeu.NewTabJeu(15, 40, 1003)
 	tj.AfficheAvecComptes()
 	prob := tj.MakeProbleme()
-	nonogram.Bench(prob, false)
+	solver.Bench(prob, false)
 }

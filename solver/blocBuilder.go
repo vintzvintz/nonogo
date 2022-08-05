@@ -1,14 +1,15 @@
-
-package nonogram
+package solver
 
 import(
 	"sync"
 	"fmt"
+
+	TJ "vintz.fr/nonogram/tabjeu"
 )
 
 // buildAllSequences construit la liste des ensembles de lignes (ou colonnes)
 // à partir d'une liste de listes de longueurs de blocs
-func buildAllSequences(taille int, seqs []seqCount) lineListSet {
+func buildAllSequences(taille int, seqs []TJ.SeqCount) lineListSet {
 	result := make(lineListSet, taille)
 
 	ch := make(chan indexedLineSet)
@@ -17,7 +18,7 @@ func buildAllSequences(taille int, seqs []seqCount) lineListSet {
 	// construit les ensembles de lignes possibles en parallèle
 	for i := range seqs {
 		wg.Add(1)
-		go func(taille int, sc seqCount, idx int) {
+		go func(taille int, sc TJ.SeqCount, idx int) {
 			lines := buildSequences(taille, sc)
 			ch <- indexedLineSet{num: idx, lines: lines}
 		}(taille, seqs[i], i)
@@ -37,10 +38,10 @@ func buildAllSequences(taille int, seqs []seqCount) lineListSet {
 
 // buildSequences construit l'ensemble des lignes (ou colonnes) possibles
 // à partir d'une liste de longueurs de blocs et de la taille de la ligne
-func buildSequences(taille int, seqs seqCount) lineList {
+func buildSequences(taille int, seqs TJ.SeqCount) lineList {
 	// cas particulier des lignes complètement vides
 	if len(seqs) == 0 {
-		ligneVide := make(LigneJeu, taille)
+		ligneVide := make(TJ.LigneJeu, taille)
 		for i := range ligneVide {
 			ligneVide[i] = cellVide
 		}
@@ -66,7 +67,7 @@ func buildSequences(taille int, seqs seqCount) lineList {
 			//  non-derniers blocs
 			tailleSeqCourante = startPos + seqs[0] + 1
 		}
-		seqCourante := make(LigneJeu, tailleSeqCourante)
+		seqCourante := make(TJ.LigneJeu, tailleSeqCourante)
 		for i := 0; i < tailleSeqCourante; i++ {
 			// place des cellules pleines entre startPos et la fin du bloc
 			if (startPos) <= i && (i < startPos+seqs[0]) {

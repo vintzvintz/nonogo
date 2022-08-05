@@ -1,4 +1,4 @@
-package nonogram
+package tabjeu
 
 import (
 	"fmt"
@@ -11,31 +11,31 @@ type étatBase int
 type étatJoué int
 
 const (
-	vide  étatBase = 0
-	plein étatBase = 1
+	Vide  étatBase = 0
+	Plein étatBase = 1
 )
 
 const (
-	blanc   étatJoué = 0
+	Blanc   étatJoué = 0
 	coché   étatJoué = 1
 	colorié étatJoué = 2
 )
 
-type cellule struct {
-	base étatBase
-	joué étatJoué
+type Cellule struct {
+	Base étatBase
+	Joué étatJoué
 }
 
 type CelluleBase interface {
-	estPlein() bool
+	EstPlein() bool
 }
 
 // TabJeu contient les cellules du jeu sous forme de slice 2D
-type LigneJeu []*cellule
+type LigneJeu []*Cellule
 type TabJeu []LigneJeu
 
-func (c cellule) estPlein() bool {
-	return c.base == plein
+func (c Cellule) EstPlein() bool {
+	return c.Base == Plein
 }
 
 // NewTabJeu crée un nouveau tableau de jeu
@@ -50,15 +50,15 @@ func NewTabJeu(taille int, ratioRemplissage int, seed int64) TabJeu {
 
 	for l := range tj {
 
-		ligne := make([]*cellule, taille)
+		ligne := make([]*Cellule, taille)
 		for col := range ligne {
 
 			// tj[i], cellules = cellules[:taille], cellules[taille:]
 			// alloue les cellules une par une et colorie certaines aleatoirement
 			// TODO allouer les cellules en une seule fois
-			cell := new(cellule)
+			cell := new(Cellule)
 			if rand.Intn(100) < ratioRemplissage {
-				cell.base = plein
+				cell.Base = Plein
 			}
 			ligne[col] = cell
 		}
@@ -79,7 +79,7 @@ func (tj TabJeu) StringsSlice() []string {
 	return tjStrings
 }
 
-func (sc seqCount) String() string {
+func (sc SeqCount) String() string {
 	var elems []string
 	for _, ints := range sc {
 		elems = append(elems, fmt.Sprintf("%2d", ints))
@@ -91,9 +91,9 @@ func (tj TabJeu) String() string {
 	return strings.Join(tj.StringsSlice(), "\n") + "\n"
 }
 
-func (c cellule) String() string {
+func (c Cellule) String() string {
 	tBase := [...]rune{' ', '\u2588'}
 
-	s := fmt.Sprintf("%c%c", tBase[c.base], tBase[c.base])
+	s := fmt.Sprintf("%c%c", tBase[c.Base], tBase[c.Base])
 	return s
 }
