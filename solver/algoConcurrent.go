@@ -104,7 +104,7 @@ func solveRecursif(allBlocs *allPossibleBlocs,
 		tjNext[numLigneCourante] = n // index d'une ligne dans allBlocs.rows
 
 		// on a trouvé une solution si toutes les lignes sont remplies
-		if len(tjNext) == taille-1 {
+		if len(tjNext) == taille {
 			solutions <- tabJeuFromIndex(allBlocs, tjNext)
 			continue
 		}
