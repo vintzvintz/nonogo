@@ -2,7 +2,6 @@ package solver
 
 import (
 	"fmt"
-	"time"
 	TJ "vintz.fr/nonogram/tabjeu"
 )
 
@@ -32,31 +31,6 @@ type allPossibleBlocs struct {
 
 type SolverFunc func(TJ.Probleme) chan *TJ.TabJeu
 
-func Bench(prob TJ.Probleme, showPerf bool) {
-
-	//BenchSolver(SolveBourrin, prob, "Bourrin")
-
-	tests := []int{12, 0, 1, 2, 3, 4, 5, 6, 12, 6, 12, 6, 12, 6, 12, 6, 12, 24, 24, 96, 96}
-	for _, nb := range tests {
-		txt := fmt.Sprintf("%d workers", nb)
-		solver := makeConcurrentSolver(nb, showPerf)
-		BenchSolver(solver, prob, txt)
-	}
-}
-
-func BenchSolver(solver SolverFunc, prob TJ.Probleme, txt string) {
-	solutions := solver(prob)
-	var nb int
-	startTime := time.Now()
-	for sol := range solutions {
-		nb++
-		//fmt.Printf("Solution n°%d\n", nb)
-		//fmt.Print(*sol)
-		_ = sol
-	}
-	duree := time.Since(startTime)
-	fmt.Printf("%s : %d solutions trouvées en %v\n", txt, nb, duree)
-}
 
 func (l lineList) String() string {
 	var str string = ""
