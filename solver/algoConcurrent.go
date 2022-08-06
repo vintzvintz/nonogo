@@ -1,9 +1,11 @@
 package solver
 
 import (
+	"os"
 	"time"
-	TJ "vintz.fr/nonogram/tabjeu"
+
 	perf "vintz.fr/nonogram/perf"
+	TJ "vintz.fr/nonogram/tabjeu"
 )
 
 type IdxCols []int
@@ -27,7 +29,7 @@ func SolveConcurrent(prob TJ.Probleme, nbWorkers int, showPerf bool) chan *TJ.Ta
 
 	var pc *perf.PerfCounter
 	if showPerf {
-		pc = perf.NewPerfCounter(time.Second, nil)
+		pc = perf.NewPerfCounter(time.Second, os.Stdout)
 	}
 
 	// prepare la liste initiale des colonnes valides = toutes les combinaisons possibles
@@ -38,17 +40,17 @@ func SolveConcurrent(prob TJ.Probleme, nbWorkers int, showPerf bool) chan *TJ.Ta
 		for n := range allCols[numCol] {
 			colsN[n] = n
 		}
-		colonnes[numCol] = colsN	
+		colonnes[numCol] = colsN
 	}
 
 	termine := func() {
-		close(solutions)
 		if pc != nil {
 			pc.Stop()
 		}
+		close(solutions)
 	}
 
-	// lance la recherche
+	// lance la recherche dans des goroutines
 	if workerPool != nil {
 		// recursion concurrente
 		solveRecursif(&allBlocs, nil, colonnes, workerPool, solutions, pc)
@@ -58,7 +60,7 @@ func SolveConcurrent(prob TJ.Probleme, nbWorkers int, showPerf bool) chan *TJ.Ta
 			termine()
 		}()
 	} else {
-		go func(){
+		go func() {
 			// recursion bloquante classique
 			solveRecursif(&allBlocs, nil, colonnes, nil, solutions, pc)
 			termine()
@@ -79,6 +81,11 @@ func solveRecursif(allBlocs *allPossibleBlocs,
 	numLigneCourante := len(tjPartiel)
 	tryLines := (*allBlocs).rows[numLigneCourante]
 
+	// met à jour le compteur de vitesse
+	if perf != nil {
+		perf.Inc(1)
+	}
+
 	// alloue un tableau de fonctions pour poursuivre la recherche
 	var nextTasks []func()
 	if wp != nil {
@@ -87,7 +94,6 @@ func solveRecursif(allBlocs *allPossibleBlocs,
 
 	// essaye toutes le combinaisons possibles pour la ligne courante
 	for n, nextLigne := range tryLines {
-
 
 		// parmi les colonnes reçues du parent, elimine celles incompatibles avec nextLine
 		nextColonnes, ok := filtreColonnes(allBlocs, nextLigne, numLigneCourante, colonnes)
@@ -121,11 +127,6 @@ func solveRecursif(allBlocs *allPossibleBlocs,
 			// execution immediate (bloquante) : recursion classique mono-thread
 			nextTask()
 		}
-	}
-
-	// met à jour le compteur de vitesse
-	if perf != nil {
-		perf.Inc(int64(len(nextTasks)))
 	}
 
 	// envoi des tâches au pool de workers

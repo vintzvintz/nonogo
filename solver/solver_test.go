@@ -36,11 +36,11 @@ func checkSolution(prob TJ.Probleme, sol *TJ.TabJeu) bool {
 
 func TestConcurrent(t *testing.T) {
 	//tj := TJ.NewTabJeu(15, 45, 1003)
-	tj := TJ.NewTabJeu(15, 60, 1003)
+	tj := TJ.NewTabJeu(5, 45, 1003)
 	tj.AfficheAvecComptes()
 	prob := tj.MakeProbleme()
 
-	nbWorkers := []int{12, 0, 1, 2, 3, 4, 5, 6, 12, 96}
+	nbWorkers := []int{12, 0, 1, 2, 4, 6, 12}
 
 	// retient le nombre de solutions pour chaque nombre de workers
 	nbSolutions := make([]int, len(nbWorkers))
