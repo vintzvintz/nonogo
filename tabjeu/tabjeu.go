@@ -87,6 +87,11 @@ func (sc BlocCount) String() string {
 	return strings.Join(elems, " ")
 }
 
+func (tbc TransposedBlocCount) String() string {
+	bc := BlocCount(tbc)
+	return bc.String()
+}
+
 func (tj TabJeu) String() string {
 	return strings.Join(tj.StringsSlice(), "\n") + "\n"
 }
