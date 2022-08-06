@@ -9,8 +9,8 @@ import (
 
 func TestPerfCounter(t *testing.T) {
 
-	const nbEvt int64 = 100
-	const nbGoroutines = 200000
+	const nbEvt int64 = 100000
+	const nbGoroutines = 2000
 	wgCount := new(sync.WaitGroup)
 	wgPrint := new(sync.WaitGroup)
 
@@ -32,14 +32,14 @@ func TestPerfCounter(t *testing.T) {
 		go func() {
 			var i int64
 			for i = 0; i < nbEvt; i++ {
-				pc.Inc()
+				pc.Inc(1)
 			}
 			wgCount.Done()
 		}()
 	}
 
 	wgCount.Wait()
-	pc.BlockingStop()
+	pc.Stop()
 	wgPrint.Wait()
 
 	got := pc.Get()
