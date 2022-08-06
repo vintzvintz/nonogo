@@ -57,3 +57,27 @@ func BenchSolver(solver SolverFunc, prob TJ.Probleme, txt string) {
 	duree := time.Since(startTime)
 	fmt.Printf("%s : %d solutions trouvées en %v\n", txt, nb, duree)
 }
+
+func (l lineList) String() string {
+	var str string = ""
+	for _, line := range l {
+		str = str + fmt.Sprintf("%v\n", line)
+	}
+	return str
+}
+
+func (all lineListSet) String() string {
+	var str string
+	for _, pl := range all {
+		str += pl.String()
+	}
+	return str
+}
+
+func (pl indexedLineSet) String() string {
+	var str string = fmt.Sprintf("Sequences possibles pour la ligne %d\n", pl.num)
+	str += pl.lines.String()
+	return str
+}
+
+
