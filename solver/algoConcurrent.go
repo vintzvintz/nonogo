@@ -136,6 +136,17 @@ func solveRecursif(allBlocs *allPossibleBlocs,
 
 }
 
+
+
+func allocValidCols(capacité int) IdxCols {
+	return make(IdxCols, 0, capacité)
+}
+
+func allocfilteredCols( n int) IdxColsSet {
+	return make(IdxColsSet, n)
+}
+
+
 func filtreColonnes(allBlocs *allPossibleBlocs,
 	ligne TJ.LigneJeu,
 	numLigne int,
@@ -144,12 +155,15 @@ func filtreColonnes(allBlocs *allPossibleBlocs,
 	taille := len(colonnes)
 
 	// filteredCols va recevoir les colonnes valides avec la ligne courante
-	filteredCols = make(IdxColsSet, taille)
+	// filteredCols = make(IdxColsSet, taille)
+	filteredCols = allocfilteredCols(taille)
+
 	for numCol := 0; numCol < taille; numCol++ {
 
 		// validCols va contenir toutes possibilités encore valides pour la colonne iCol
 		// TODO allouer en une seule fois
-		validCols := make(IdxCols, 0, len(colonnes[numCol]))
+		//validCols := make(IdxCols, 0, len(colonnes[numCol]))
+		validCols := allocValidCols(len(colonnes[numCol]))
 
 		cellLignePlein := ligne[numCol].EstPlein()
 
