@@ -1,30 +1,19 @@
 package perf
 
 import (
-	"fmt"
 	"sync"
 	"testing"
 	"time"
+	"os"
 )
 
 func TestPerfCounter(t *testing.T) {
 
-	const nbEvt int64 = 10000
+	const nbEvt int64 = 1000000
 	const nbGoroutines = 200
 	wgCount := new(sync.WaitGroup)
-	wgPrint := new(sync.WaitGroup)
+	pc := NewPerfCounter(time.Second/10, os.Stdout)
 
-	// affiche l'avancement
-	output := make(chan string)
-	wgPrint.Add(1)
-	go func() {
-		for s := range output {
-			fmt.Print(s)
-		}
-		wgPrint.Done()
-	}()
-
-	pc := NewPerfCounter(time.Second/10, output)
 
 	// lance le comptage
 	wgCount.Add(nbGoroutines)
@@ -40,7 +29,6 @@ func TestPerfCounter(t *testing.T) {
 
 	wgCount.Wait()
 	pc.Stop()
-	wgPrint.Wait()
 
 	got := pc.Get()
 	want := nbEvt * nbGoroutines
