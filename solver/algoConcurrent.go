@@ -19,8 +19,8 @@ func makeConcurrentSolver(nbWorkers int, showPerf bool) SolverFunc {
 func SolveConcurrent(prob TJ.Probleme, nbWorkers int, showPerf bool) chan *TJ.TabJeu {
 	solutions := make(chan *TJ.TabJeu)
 	allBlocs := allPossibleBlocs{
-		rows: buildAllSequences(prob.Taille, prob.SeqLignes),
-		cols: buildAllSequences(prob.Taille, prob.SeqColonnes),
+		rows: buildAllSequences(prob.Taille, prob.BlocsLignes),
+		cols: buildAllSequences(prob.Taille, prob.BlocsColonnes),
 	}
 
 	var workerPool *WorkerPool = NewWorkQueue(nbWorkers)
@@ -82,15 +82,12 @@ func solveRecursif(allBlocs *allPossibleBlocs,
 	// alloue un tableau de fonctions pour poursuivre la recherche
 	var nextTasks []func()
 	if wp != nil {
-		nextTasks = make([]func(), 0, len(tryLines))
+		nextTasks = make(TaskList, 0, len(tryLines))
 	}
 
 	// essaye toutes le combinaisons possibles pour la ligne courante
 	for n, nextLigne := range tryLines {
 
-		if perf != nil {
-			perf.Inc() // pour mesurer la vitesse
-		}
 
 		// parmi les colonnes reçues du parent, elimine celles incompatibles avec nextLine
 		nextColonnes, ok := filtreColonnes(allBlocs, nextLigne, numLigneCourante, colonnes)
@@ -124,6 +121,11 @@ func solveRecursif(allBlocs *allPossibleBlocs,
 			// execution immediate (bloquante) : recursion classique mono-thread
 			nextTask()
 		}
+	}
+
+	// met à jour le compteur de vitesse
+	if perf != nil {
+		perf.Inc(int64(len(nextTasks)))
 	}
 
 	// envoi des tâches au pool de workers

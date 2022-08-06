@@ -9,7 +9,7 @@ import(
 
 // buildAllSequences construit la liste des ensembles de lignes (ou colonnes)
 // à partir d'une liste de listes de longueurs de blocs
-func buildAllSequences(taille int, seqs []TJ.SeqCount) lineListSet {
+func buildAllSequences(taille int, seqs []TJ.BlocCount) lineListSet {
 	result := make(lineListSet, taille)
 
 	ch := make(chan indexedLineSet)
@@ -18,7 +18,7 @@ func buildAllSequences(taille int, seqs []TJ.SeqCount) lineListSet {
 	// construit les ensembles de lignes possibles en parallèle
 	for i := range seqs {
 		wg.Add(1)
-		go func(taille int, sc TJ.SeqCount, idx int) {
+		go func(taille int, sc TJ.BlocCount, idx int) {
 			lines := buildSequences(taille, sc)
 			ch <- indexedLineSet{num: idx, lines: lines}
 		}(taille, seqs[i], i)
@@ -38,9 +38,9 @@ func buildAllSequences(taille int, seqs []TJ.SeqCount) lineListSet {
 
 // buildSequences construit l'ensemble des lignes (ou colonnes) possibles
 // à partir d'une liste de longueurs de blocs et de la taille de la ligne
-func buildSequences(taille int, seqs TJ.SeqCount) lineList {
+func buildSequences(taille int, blocs TJ.BlocCount) lineList {
 	// cas particulier des lignes complètement vides
-	if len(seqs) == 0 {
+	if len(blocs) == 0 {
 		ligneVide := make(TJ.LigneJeu, taille)
 		for i := range ligneVide {
 			ligneVide[i] = cellVide
@@ -49,11 +49,11 @@ func buildSequences(taille int, seqs TJ.SeqCount) lineList {
 	}
 
 	// cas particulier pour le dernier bloc (pas de séparateur à la fin)
-	lastBloc := len(seqs) == 1
+	lastBloc := len(blocs) == 1
 
 	// calcule le nb de cellules mini pour placer tous les blocs avec un espacement de 1
-	var longMini int = len(seqs) - 1 // nb de cellules vides intercalaires
-	for _, s := range seqs {
+	var longMini int = len(blocs) - 1 // nb de cellules vides intercalaires
+	for _, s := range blocs {
 		longMini += s
 	}
 
@@ -65,12 +65,12 @@ func buildSequences(taille int, seqs TJ.SeqCount) lineList {
 		tailleSeqCourante := taille // dernier blocs
 		if !lastBloc {
 			//  non-derniers blocs
-			tailleSeqCourante = startPos + seqs[0] + 1
+			tailleSeqCourante = startPos + blocs[0] + 1
 		}
 		seqCourante := make(TJ.LigneJeu, tailleSeqCourante)
 		for i := 0; i < tailleSeqCourante; i++ {
 			// place des cellules pleines entre startPos et la fin du bloc
-			if (startPos) <= i && (i < startPos+seqs[0]) {
+			if (startPos) <= i && (i < startPos+blocs[0]) {
 				seqCourante[i] = cellPlein
 				continue
 			}
@@ -85,7 +85,7 @@ func buildSequences(taille int, seqs TJ.SeqCount) lineList {
 
 		// si ce n'est pas le dernier bloc, appel récursif pour les séquences restantes
 		if !lastBloc {
-			seqsSuivantes := buildSequences(taille-tailleSeqCourante, seqs[1:])
+			seqsSuivantes := buildSequences(taille-tailleSeqCourante, blocs[1:])
 
 			//  concatène les séquences suivantes avec la séquence courante
 			for i := range seqsSuivantes {

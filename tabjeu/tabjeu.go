@@ -79,7 +79,7 @@ func (tj TabJeu) StringsSlice() []string {
 	return tjStrings
 }
 
-func (sc SeqCount) String() string {
+func (sc BlocCount) String() string {
 	var elems []string
 	for _, ints := range sc {
 		elems = append(elems, fmt.Sprintf("%2d", ints))

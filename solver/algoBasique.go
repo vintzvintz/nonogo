@@ -8,13 +8,12 @@ import (
 	TJ "vintz.fr/nonogram/tabjeu"
 )
 
-
 type multiIndex struct {
 	idx []int
 	max []int
 }
 
-func NewCompteur(max []int) chan []int {
+func newCompteur(max []int) chan []int {
 
 	taille := len(max)
 
@@ -123,20 +122,20 @@ func makeTache(taille int,
 }
 
 // renvoie une closure qui teste si tj est cohérent avec les longueurs de blocs en colonne
-func makeTestSolution(seqColSolution []TJ.SeqCount) func(tj *TJ.TabJeu) bool {
+func makeTestSolution(seqColSolution []TJ.BlocCount) func(tj *TJ.TabJeu) bool {
 	return func(tj *TJ.TabJeu) bool {
 		// compte les longueurs de blocs en colonne
-		return tj.CompteBlocsCompare(seqColSolution)
+		return tj.CompareBlocsColonnes(seqColSolution)
 	}
 }
 
 // Trouvesolutions revoie toutes les solutions possibles du nonogramme
 // à partir des longueurs de blocs en lignes et en colonnes
 func SolveBourrin(prob TJ.Probleme) chan *TJ.TabJeu {
-	allSeqs := buildAllSequences(prob.Taille, prob.SeqLignes)
+	allSeqs := buildAllSequences(prob.Taille, prob.BlocsLignes)
 
 	// closure qui teste si tj est une solution valide
-	testFunc := makeTestSolution(prob.SeqColonnes)
+	testFunc := makeTestSolution(prob.BlocsColonnes)
 
 	// calcule le nb de sequences possibles pour chaque ligne du jeu
 	// et cree un "multi-index" pour parcourir toutes les sequences possibles
@@ -144,7 +143,7 @@ func SolveBourrin(prob TJ.Probleme) chan *TJ.TabJeu {
 	for i := range allSeqs {
 		nbSeq[i] = len(allSeqs[i])
 	}
-	compteur := NewCompteur(nbSeq)
+	compteur := newCompteur(nbSeq)
 
 	// recoit la ou les solutions correctes
 	out := make(chan *TJ.TabJeu)

@@ -4,7 +4,8 @@ import (
 	"fmt"
 )
 
-type SeqCount []int
+type BlocCount []int
+type TransposedBlocCount []int
 
 // Direction de comptage des séquences
 const (
@@ -14,29 +15,29 @@ const (
 
 type Probleme struct {
 	Taille      int
-	SeqLignes   []SeqCount
-	SeqColonnes []SeqCount
+	BlocsLignes   []BlocCount
+	BlocsColonnes []BlocCount
 }
 
 func (tj *TabJeu) MakeProbleme() Probleme {
 	return Probleme{
 		Taille:      len(*tj),
-		SeqLignes:   tj.CompteBlocs(LIGNE),
-		SeqColonnes: tj.CompteBlocs(COLONNE),
+		BlocsLignes:   tj.CompteBlocs(LIGNE),
+		BlocsColonnes: tj.CompteBlocs(COLONNE),
 	}
 }
 
 // CompteBlocs compte les blocs dans la direction indiquée
 // renvoie une liste  de longueurs des blocs cellules pleines consécutives
-func (tj TabJeu) CompteBlocs(direction int) []SeqCount {
+func (tj TabJeu) CompteBlocs(direction int) []BlocCount {
 
 	taille := len(tj)
-	resultat := make([]SeqCount, taille)
+	resultat := make([]BlocCount, taille)
 	// index i : ligne en mode 'ligne', ou colonne en mode 'colonne'
 	// index j : colonne en mode 'ligne' ou colonne en mode 'ligne'
 	for i := 0; i < taille; i++ {
 
-		blocs := make(SeqCount, taille) // le nb max de blocs en réalité est (taille/2 + 1)
+		blocs := make(BlocCount, taille) // le nb max de blocs en réalité est (taille/2 + 1)
 		var long int                    // longueur du bloc courant
 		var rang int                    // rang du bloc courant
 		for j := 0; j < taille; j++ {
@@ -73,7 +74,7 @@ func (tj TabJeu) CompteBlocs(direction int) []SeqCount {
 // CompteBlocsCompare compte les blocs dans la direction indiquée
 // renvoie vrai si les blocs sont identiques à la référence
 // version optimisée de CompteBlocs sans allocations
-func (tj TabJeu) CompteBlocsCompare(seqRef []SeqCount) bool {
+func (tj TabJeu) CompareBlocsColonnes(seqRef []BlocCount) bool {
 
 	taille := len(tj)
 	for i := 0; i < taille; i++ {
@@ -82,13 +83,13 @@ func (tj TabJeu) CompteBlocsCompare(seqRef []SeqCount) bool {
 		var rang int // rang du bloc courant
 		for j := 0; j < taille; j++ {
 
+			// inversion i/j pour parcourir dans l'axes des colonnes
 			var cell CelluleBase = tj[j][i]
 
 			// debut ou continuation d'un bloc
 			if cell.EstPlein() {
 				long++
 			}
-
 			// fin d'un bloc ou fin de la ligne
 			if (!cell.EstPlein() && long > 0) || j == taille-1 {
 				// compare avec la référence
@@ -120,17 +121,17 @@ func (tj TabJeu) AfficheAvecComptes() {
 }
 
 // transposeSeqColonnes convertit en lignes les comptes de séquences en colonne
-// ceci est utile surtout pour l'affichage
-func transposeSeqColonnes(seqC []SeqCount) []SeqCount {
-	// Transposition des séquences en colonnes
-	seqTranspo := make([]SeqCount, 0)
+// ceci est utile seulement pour l'affichage
+func transposeSeqColonnes(seqC []BlocCount) []TransposedBlocCount {
 
-	// 	on ne connait pas à l'avance le nb max de séquences
+	seqTranspo := make( []TransposedBlocCount, 0)
+
+	// 	on ne connait pas à l'avance le nb max de blocs
 	for rang := 0; ; rang++ {
 		var empty bool = true // sort de la boucle quand toutes les séquences en colonnes sont épuisées
 
 		// transpo contient les séquences en colonnes de même rang
-		ligneTranspo := make(SeqCount, len(seqC))
+		ligneTranspo := make(TransposedBlocCount, len(seqC))
 
 		for i := range seqC {
 			// valeur par défaut 0 si plus de séquences dans la colonne
