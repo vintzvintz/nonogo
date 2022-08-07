@@ -19,10 +19,12 @@ type indexedLineSet struct {
 	lines lineList
 }
 
+/*
 // cellVide et cellPlein sont les éléments de base pour construire les sequences possibles
 // on aurait aussi bien pu utiliser des booleéns à la place des pointeurs
 var cellVide = &TJ.Cellule{Base: TJ.Vide, Joué: TJ.Blanc}
 var cellPlein = &TJ.Cellule{Base: TJ.Plein, Joué: TJ.Blanc}
+*/
 
 type allPossibleBlocs struct {
 	rows lineListSet

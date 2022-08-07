@@ -37,12 +37,11 @@ func (tj TabJeu) CompteBlocs(direction int) []BlocCount {
 	// index j : colonne en mode 'ligne' ou colonne en mode 'ligne'
 	for i := 0; i < taille; i++ {
 
-		blocs := make(BlocCount, taille) // le nb max de blocs en réalité est (taille/2 + 1)
+		blocs := make(BlocCount, 0, taille/2 +1 ) // le nb max de blocs est (taille/2 + 1) car il faut  des separateurs
 		var long int                    // longueur du bloc courant
-		var rang int                    // rang du bloc courant
+		var cell Cellule
 		for j := 0; j < taille; j++ {
 
-			var cell CelluleBase
 			switch direction {
 			case LIGNE:
 				cell = tj[i][j]
@@ -51,21 +50,18 @@ func (tj TabJeu) CompteBlocs(direction int) []BlocCount {
 			default:
 				panic(fmt.Sprintf("Direction %d inconnue", direction))
 			}
-			if cell.EstPlein() {
+			if cell == Plein {
 				long++
 			}
 
 			// fin d'un bloc ou fin de la ligne
-			if (!cell.EstPlein() && long > 0) || j == taille-1 {
+			if ( cell == Vide && long > 0) || j == taille-1 {
 				if long > 0 {
-					blocs[rang] = long
-					rang++
+					blocs = append(blocs, long)
 					long = 0
 				}
 			}
 		}
-		// tronque la liste des blocs à la bonne longueur
-		blocs = blocs[:rang]
 		resultat[i] = blocs
 	}
 	return resultat
@@ -74,7 +70,7 @@ func (tj TabJeu) CompteBlocs(direction int) []BlocCount {
 // CompteBlocsCompare compte les blocs dans la direction indiquée
 // renvoie vrai si les blocs sont identiques à la référence
 // version optimisée de CompteBlocs sans allocations
-func (tj TabJeu) CompareBlocsColonnes(seqRef []BlocCount) bool {
+func (tj TabJeu) CompareBlocsColonnes(blocsRef []BlocCount) bool {
 
 	taille := len(tj)
 	for i := 0; i < taille; i++ {
@@ -84,19 +80,19 @@ func (tj TabJeu) CompareBlocsColonnes(seqRef []BlocCount) bool {
 		for j := 0; j < taille; j++ {
 
 			// inversion i/j pour parcourir dans l'axes des colonnes
-			var cell CelluleBase = tj[j][i]
+			var cell Cellule = tj[j][i]
 
 			// debut ou continuation d'un bloc
-			if cell.EstPlein() {
+			if cell == Plein {
 				long++
 			}
 			// fin d'un bloc ou fin de la ligne
-			if (!cell.EstPlein() && long > 0) || j == taille-1 {
-				// compare avec la référence
-				if (rang < len(seqRef[i])) && (long != seqRef[i][rang]) {
+			if ( cell != Plein && long > 0) || j == taille-1 {
+				// compare avec la longueur du bloc de référence
+				if (rang < len(blocsRef[i])) && (long != blocsRef[i][rang]) {
 					return false
 				}
-				// prepare pour compter  le bloc suivant
+				// prepare le comptage du bloc suivant
 				rang++
 				long = 0
 			}

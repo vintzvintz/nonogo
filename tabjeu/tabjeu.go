@@ -7,36 +7,42 @@ import (
 	"time"
 )
 
+/*
 type étatBase int
 type étatJoué int
+*/
+
+
+type Cellule byte
 
 const (
-	Vide  étatBase = 0
-	Plein étatBase = 1
+	Vide  Cellule = 0
+	Plein Cellule = 1
 )
 
+/*
 const (
 	Blanc   étatJoué = 0
 	coché   étatJoué = 1
 	colorié étatJoué = 2
 )
+*/
 
-type Cellule struct {
-	Base étatBase
-	Joué étatJoué
-}
-
+/*
 type CelluleBase interface {
 	EstPlein() bool
 }
+*/
 
 // TabJeu contient les cellules du jeu sous forme de slice 2D
-type LigneJeu []*Cellule
+type LigneJeu []Cellule
 type TabJeu []LigneJeu
 
+/*
 func (c Cellule) EstPlein() bool {
-	return c.Base == Plein
+	return c == Plein
 }
+*/
 
 // NewTabJeu crée un nouveau tableau de jeu
 func NewTabJeu(taille int, ratioRemplissage int, seed int64) TabJeu {
@@ -48,21 +54,18 @@ func NewTabJeu(taille int, ratioRemplissage int, seed int64) TabJeu {
 	// tableau de jeu représenté par un slice à 2 dimensions
 	tj := make(TabJeu, taille)
 
-	for l := range tj {
+	// alloue toutes les cellules en une seule fois
+	cellules := make(LigneJeu, taille*taille)
 
-		ligne := make([]*Cellule, taille)
-		for col := range ligne {
-
-			// tj[i], cellules = cellules[:taille], cellules[taille:]
-			// alloue les cellules une par une et colorie certaines aleatoirement
-			// TODO allouer les cellules en une seule fois
-			cell := new(Cellule)
-			if rand.Intn(100) < ratioRemplissage {
-				cell.Base = Plein
-			}
-			ligne[col] = cell
+	// colorie certaines cellules
+	for i:= range cellules {
+		if rand.Intn(100) < ratioRemplissage {
+			cellules[i] = Plein
 		}
-		tj[l] = ligne
+	}
+	// construit tabjeu en découpant en lignes les cellules alouées
+	for l := range tj {
+		tj[l], cellules = cellules[:taille], cellules[taille:]
 	}
 	return tj
 }
@@ -97,8 +100,9 @@ func (tj TabJeu) String() string {
 }
 
 func (c Cellule) String() string {
-	tBase := [...]rune{' ', '\u2588'}
-
-	s := fmt.Sprintf("%c%c", tBase[c.Base], tBase[c.Base])
+	s := "  "  // deux espaces pour une cellule vide
+	if c == Plein {
+		s = "\u2588\u2588"
+	}
 	return s
 }

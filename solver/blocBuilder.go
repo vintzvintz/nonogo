@@ -36,15 +36,15 @@ func buildAllSequences(taille int, blocs []TJ.BlocCount) lineListSet {
 	return result
 }
 
-// buildSequences construit l'ensemble des lignes (ou colonnes) possibles
-// à partir d'une liste de longueurs de blocs et de la taille de la ligne
+// buildSequences construit recursivement toutes les combinaisons possibles
+// correspondant à une liste de longueurs de blocs pour une ligne ou une colonne
 func buildSequences(taille int, blocs TJ.BlocCount) lineList {
 	// cas particulier des lignes complètement vides
 	if len(blocs) == 0 {
-		ligneVide := make(TJ.LigneJeu, taille)
-		for i := range ligneVide {
-			ligneVide[i] = cellVide
-		}
+		ligneVide := make(TJ.LigneJeu, taille) // zero-value = Vide 
+//		for i := range ligneVide {
+//			ligneVide[i] = cellVide
+//		}
 		return lineList{ligneVide}
 	}
 
@@ -59,7 +59,7 @@ func buildSequences(taille int, blocs TJ.BlocCount) lineList {
 
 	result := make(lineList, 0)
 
-	// essaye succesivement le bloc sur toutes les positions possibles
+	// place succesivement le bloc sur toutes les positions possibles
 	for startPos := 0; startPos <= (taille - longMini); startPos++ {
 
 		tailleSeqCourante := taille // dernier blocs
@@ -69,13 +69,14 @@ func buildSequences(taille int, blocs TJ.BlocCount) lineList {
 		}
 		seqCourante := make(TJ.LigneJeu, tailleSeqCourante)
 		for i := 0; i < tailleSeqCourante; i++ {
-			// place des cellules pleines entre startPos et la fin du bloc
+			// par défaut, toutes les cellules sont initialisées vides, inutile de les remplir explicitement
+			//seqCourante[i] = cellVide
+
+			// remplit la ligne à partir de startPos jusqu'à la fin du bloc
 			if (startPos) <= i && (i < startPos+blocs[0]) {
-				seqCourante[i] = cellPlein
+				seqCourante[i] = TJ.Plein
 				continue
 			}
-			// place des cellules vides ailleurs (avant et/ou après le bloc)
-			seqCourante[i] = cellVide
 		}
 
 		// Si c'est le dernier bloc on renvoie juste les séquences courantes

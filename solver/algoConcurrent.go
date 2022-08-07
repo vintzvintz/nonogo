@@ -165,12 +165,12 @@ func filtreColonnes(allBlocs *allPossibleBlocs,
 		//validCols := make(IdxCols, 0, len(colonnes[numCol]))
 		validCols := allocValidCols(len(colonnes[numCol]))
 
-		cellLignePlein := ligne[numCol].EstPlein()
+		cellLigne := ligne[numCol]
 
 		for _, n := range colonnes[numCol] {
 			col := (*allBlocs).cols[numCol][n]
-			cellColPlein := col[numLigne].EstPlein()
-			if cellLignePlein == cellColPlein {
+			cellCol := col[numLigne]
+			if cellLigne == cellCol {
 				validCols = append(validCols, n)
 			}
 		}
