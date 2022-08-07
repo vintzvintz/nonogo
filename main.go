@@ -2,26 +2,29 @@ package main
 
 import (
 	"fmt"
-	"time"
 	"runtime"
+	"time"
 
 	"vintz.fr/nonogram/solver"
 	"vintz.fr/nonogram/tabjeu"
 )
-
 
 func main() {
 	essai()
 }
 
 func essai() {
-	tj := tabjeu.NewTabJeu(15, 43, 1003)
+	tj := tabjeu.NewTabJeu(5, 42, 1003)
 	tj.AfficheAvecComptes()
 	prob := tj.MakeProbleme()
-	nbWorkers := runtime.NumCPU()
+
+	nbCPU := runtime.NumCPU()
+	_ = nbCPU
+
+	nbWorkers := 2
 	txt := fmt.Sprintf("%d workers", nbWorkers)
 
-	for iter :=0; iter<1; iter++ {
+	for iter := 0; iter < 1; iter++ {
 		startTime := time.Now()
 		var nbSol int
 		for sol := range solver.SolveConcurrent(prob, nbWorkers, true) {
