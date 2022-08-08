@@ -1,7 +1,8 @@
 package solver
 
 import (
-	"fmt"
+	//"fmt"
+
 	"os"
 	"time"
 
@@ -55,7 +56,7 @@ func SolveConcurrent(prob TJ.Probleme, nbWorkers int, showPerf bool) chan *TJ.Ta
 	if nbWorkers > 0 {
 
 		workerPool.Exec(func() {
-			solveRecursif(&allBlocs, TjPartiel{}, 0, colonnes, workerPool, solutions, pc)
+			solveRecursif(&allBlocs, TjPartiel{}, 0, colonnes, nil, workerPool, solutions, pc)
 		})
 		// goroutine nécessaire pour attendre la fin du traitment
 		go func() {
@@ -64,7 +65,7 @@ func SolveConcurrent(prob TJ.Probleme, nbWorkers int, showPerf bool) chan *TJ.Ta
 		}()
 	} else {
 		go func() {
-			solveRecursif(&allBlocs, TjPartiel{}, 0, colonnes, workerPool, solutions, pc)
+			solveRecursif(&allBlocs, TjPartiel{}, 0, colonnes, nil, workerPool, solutions, pc)
 			termine() // pas la peine d'attendre dans une goroutine distincte du lancement
 		}()
 	}
@@ -78,9 +79,18 @@ func solveRecursif(allBlocs *allPossibleBlocs,
 	tjPartiel TjPartiel, // index dans allBlocs des lignes déja placées (longueur variable entre 0 et [taille] éléments)
 	numLigneCourante int,
 	initialCols IdxColsSet, // index dans allBlocs des colonnes encore valides
+	copyC chan struct{},       // 
 	wp *WorkerPool,
 	solutions chan *TJ.TabJeu,
 	perf *perf.PerfCounter) {
+
+
+	// copie l'etat si demandé par l'appelant
+	if copyC != nil {
+		initialCols = initialCols.AllocNew(true)
+		copyC <- struct{}{}   // signale que la copie a bien été effectuée
+	}
+
 
 	taille := len(allBlocs.rows)
 	tryLines := allBlocs.rows[numLigneCourante]
@@ -90,7 +100,10 @@ func solveRecursif(allBlocs *allPossibleBlocs,
 		perf.Inc(1)
 	}
 
+	// alloue un espace pour recevoir les colonnes valides restantes après chaque ligne
 	nextCols := initialCols.AllocNew(false)
+
+	doneC := make(chan struct{})  // pour signaler la fin de la copie des parametres par la recursion
 
 	// essaye toutes les combinaisons encore valides pour la ligne courante
 	for n, nextLigne := range tryLines {
@@ -99,9 +112,9 @@ func solveRecursif(allBlocs *allPossibleBlocs,
 
 		ok := filtreColonnesInplace(allBlocs, nextLigne, numLigneCourante, initialCols, nextCols)
 
-		tjPartiel[numLigneCourante] = n
-		tjp := tjPartiel[0:numLigneCourante+1]
-		fmt.Printf("%v ligne %d : %d/%d => %v\n", tjp, numLigneCourante, n, len(tryLines), ok)
+		//tjPartiel[numLigneCourante] = n
+		//tjp := tjPartiel[0:numLigneCourante+1]
+		//fmt.Printf("%v ligne %d : %d/%d => %v\n", tjp, numLigneCourante, n, len(tryLines), ok)
 		// abandonne définitivement nextLigne s'il n'y a plus assez de colonnes compatibles
 		if !ok {
 			continue
@@ -119,21 +132,22 @@ func solveRecursif(allBlocs *allPossibleBlocs,
 		// Prepare appel récursif bloquant sans copie des paramètres
 		// -> pour execution par la même goroutine (recursion classique )
 		recurseNoCopy := func() {
-			fmt.Println("NoCopy")
-			solveRecursif(allBlocs, tjPartiel, numLigneCourante+1, nextCols, wp, solutions, perf)
+			//fmt.Println("NoCopy")
+			solveRecursif(allBlocs, tjPartiel, numLigneCourante+1, nextCols, nil, wp, solutions, perf)
 		}
 
 		// Prepare appel recursif avec copie  des paramètres
 		// -> pour execution par un autre worker dans une autre goroutine
 		recurseWithCopy := func() {
-			fmt.Println("WithCopy")
-			nextColsCopy := nextCols.AllocNew(true)
-			solveRecursif(allBlocs, tjPartiel, numLigneCourante+1, nextColsCopy, wp, solutions, perf)
+			//fmt.Println("WithCopy")
+			solveRecursif(allBlocs, tjPartiel, numLigneCourante+1, nextCols, doneC, wp, solutions, perf)
 		}
 
 		// essaie de continuer avec un worker, sinon recursion classique sans copie
 		accepted := wp.TryExec(recurseWithCopy)
-		if !accepted {
+		if accepted {
+			<- doneC   //  attend la fin de copie de l'état (nextCols) par la recursion
+		} else {
 			recurseNoCopy()
 		}
 	}

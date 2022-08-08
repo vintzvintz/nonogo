@@ -1,6 +1,7 @@
 package solver
 
 import (
+	"fmt"
 	_ "fmt"
 	"sync"
 )
@@ -24,10 +25,14 @@ func NewWorkerPool(nbWorkers int) (wp *WorkerPool) {
 	// lance les workers
 	for i := 0; i < nbWorkers; i++ {
 		go func(id int) {
+			fmt.Printf("Launched worker #%d\n", id)
 			for tache := range wp.ch {
+			//	fmt.Printf("Worker #%d  : start task\n", id)
 				tache()
+			//	fmt.Printf("Worker #%d  : end task\n", id)
 				wp.wg.Done()
 			}
+			fmt.Printf("End of worker #%d\n", id)
 		}(i)
 	}
 	return wp
@@ -39,20 +44,19 @@ func (wp *WorkerPool) TryExec(task func()) (accepted bool) {
 	wp.wg.Add(1)
 	select {
 	case wp.ch <- task: // execution avec un worker disponible
-		accepted = true 
-		// wg.Done() appelé par le worker
+		accepted = true
+		// wg.Done() appelé par le worker plus tard
 	default:
 		accepted = false
 		wp.wg.Done()
 	}
-	return accepted 
+	return accepted
 }
 
-func (wp *WorkerPool) Exec(task func())  {
+func (wp *WorkerPool) Exec(task func()) {
 	wp.wg.Add(1)
-	wp.ch <- task	
+	wp.ch <- task
 }
-
 
 // Wait() bloque jusqu'au traitement de la dernière tâche
 func (wp *WorkerPool) Wait() {
