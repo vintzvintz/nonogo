@@ -25,7 +25,7 @@ func NewWorkerPool(nbWorkers int) (wp *WorkerPool) {
 	// lance les workers
 	for i := 0; i < nbWorkers; i++ {
 		go func(id int) {
-			fmt.Printf("Launched worker #%d\n", id)
+			//fmt.Printf("Launched worker #%d\n", id)
 			for tache := range wp.ch {
 			//	fmt.Printf("Worker #%d  : start task\n", id)
 				tache()

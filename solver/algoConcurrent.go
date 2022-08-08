@@ -1,7 +1,7 @@
 package solver
 
 import (
-	"fmt"
+	//"fmt"
 
 	"os"
 	"sync"
@@ -52,21 +52,12 @@ func SolveConcurrent(prob TJ.Probleme, nbWorkers int, showPerf bool) chan *TJ.Ta
 		}
 		close(solutions)
 	}
-/*
-	idC := make(chan int)
-	go func() {
-		var i int
-		for {
-			idC <- i
-			i++
-		}
-	}()
-*/
+
 	// lance la récursion
 	if nbWorkers > 0 {
 
 		workerPool.Exec(func() {
-			solveRecursif(&allBlocs, TjPartiel{}, 0, colonnes, nil, -1, workerPool, solutions, pc /*, idC*/)
+			solveRecursif(&allBlocs, TjPartiel{}, 0, colonnes, nil, workerPool, solutions, pc)
 		})
 		// goroutine nécessaire pour attendre la fin du traitment
 		go func() {
@@ -75,12 +66,11 @@ func SolveConcurrent(prob TJ.Probleme, nbWorkers int, showPerf bool) chan *TJ.Ta
 		}()
 	} else {
 		go func() {
-			solveRecursif(&allBlocs, TjPartiel{}, 0, colonnes, nil, -1, workerPool, solutions, pc /*, idC*/)
+			solveRecursif(&allBlocs, TjPartiel{}, 0, colonnes, nil, workerPool, solutions, pc)
 			termine() // pas la peine d'attendre dans une goroutine distincte du lancement
 		}()
 	}
 
-	fmt.Println("Wesh")
 	return solutions
 }
 
@@ -91,25 +81,15 @@ func solveRecursif(allBlocs *allPossibleBlocs,
 	numLigneCourante int,
 	initialCols IdxColsSet, // index dans allBlocs des colonnes encore valides
 	lockCopy *sync.Mutex,
-	idLock int,
 	wp *WorkerPool,
 	solutions chan *TJ.TabJeu,
-	perf *perf.PerfCounter,
-	/*idC chan int*/) {
+	perf *perf.PerfCounter) {
 
-/*
-		idSelf := <-idC
-*/
-	 const idSelf = 0
-	 
-	//fmt.Printf( "Début solve #%d\n", idSelf )
 
 	// copie l'etat si demandé par l'appelant
 	if lockCopy != nil {
 		initialCols = initialCols.AllocNew(true)
 		lockCopy.Unlock()
-		//fmt.Printf( "Solve #%d released nextLock #%d\n", idSelf, idLock )
-
 	}
 
 	taille := len(allBlocs.rows)
@@ -123,9 +103,7 @@ func solveRecursif(allBlocs *allPossibleBlocs,
 	// alloue un espace pour recevoir les colonnes valides restantes après chaque ligne
 	nextCols := initialCols.AllocNew(false)
 
-	//doneC := make(chan struct{})  // pour signaler la fin de la copie des parametres par la recursion
 	lockNext := new(sync.Mutex) // protege l'acces aux parametre de recursion
-	//fmt.Printf( "Solve #%d created nextLock #%d \n", idSelf, idSelf )
 	var waitChildCopy bool = true
 
 	// essaye toutes les combinaisons encore valides pour la ligne courante
@@ -133,21 +111,15 @@ func solveRecursif(allBlocs *allPossibleBlocs,
 
 		// attend que la récursion lancée au tour précédent ait fini de copier ses paramètres
 		if waitChildCopy {
-		//	fmt.Printf( "Solve #%d waits for nextLock #%d in iteration %d/%d\n", idSelf, idSelf, n , len(tryLines))
 			lockNext.Lock()
 			waitChildCopy = false
 		}
-		//fmt.Printf( "Solve #%d acquired nextLock #%d in iteration %d/%d\n", idSelf, idSelf, n , len(tryLines))
 
 		// parmi les colonnes reçues du parent, elimine celles incompatibles avec nextLine
 		ok := filtreColonnesInplace(allBlocs, nextLigne, numLigneCourante, initialCols, nextCols)
 
-		//tjPartiel[numLigneCourante] = n
-		//tjp := tjPartiel[0:numLigneCourante+1]
-		//fmt.Printf("%v ligne %d : %d/%d => %v\n", tjp, numLigneCourante, n, len(tryLines), ok)
 		// abandonne définitivement nextLigne s'il n'y a plus assez de colonnes compatibles
 		if !ok {
-			//lockNext.Unlock()
 			continue
 		}
 
@@ -158,21 +130,18 @@ func solveRecursif(allBlocs *allPossibleBlocs,
 		// toutes les lignes sont remplies (et on n'a pas abandonné la ligne en cours)
 		if numLigneCourante == taille-1 {
 			solutions <- tabJeuFromIndexArray(allBlocs, tjPartiel, taille)
-			//lockNext.Unlock()
 			continue
 		}
 		// Prepare appel récursif bloquant sans copie des paramètres
 		// -> pour execution par la même goroutine (recursion classique )
 		recurseNoCopy := func() {
-			//fmt.Println("NoCopy")
-			solveRecursif(allBlocs, tjPartiel, numLigneCourante+1, nextCols, nil, idSelf, wp, solutions, perf/*, idC*/)
+			solveRecursif(allBlocs, tjPartiel, numLigneCourante+1, nextCols, nil, wp, solutions, perf )
 		}
 
 		// Prepare appel recursif avec copie  des paramètres
 		// -> pour execution par un autre worker dans une autre goroutine
 		recurseWithCopy := func() {
-			//fmt.Println("WithCopy")
-			solveRecursif(allBlocs, tjPartiel, numLigneCourante+1, nextCols, lockNext, idSelf, wp, solutions, perf /*, idC*/)
+			solveRecursif(allBlocs, tjPartiel, numLigneCourante+1, nextCols, lockNext, wp, solutions, perf)
 		}
 
 		// essaie de continuer avec un worker, sinon recursion classique sans copie
@@ -181,18 +150,10 @@ func solveRecursif(allBlocs *allPossibleBlocs,
 			// on met un flag pour attendre que l'appelé ait fini e copier ses paramètres au début du prochain tour
 			// lockNext est libere par l'appelé dès qu'il a fini
 			waitChildCopy = true
-			//fmt.Printf("Solve #%d started a child with workerpool\n", idSelf)
-		} else {
-			// a ce point : nextLock est toujours locked car rien ne l'a libéré
-			// pas besoin de copier les données puisqu'on continue la récursion dans la même goroutine
-			//waitChildCopy = false
-			//lockNext.Unlock()
-			//fmt.Printf( "Solve #%d startd recurseNoCopy() \n", idSelf  )
-
-			recurseNoCopy()
-
+			continue
 		}
-
+		// si le workerpool a refusé la tâche on continue avec une récursion classique
+		recurseNoCopy()
 	}
 }
 
