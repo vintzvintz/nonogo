@@ -86,12 +86,6 @@ func solveRecursif(allBlocs *allPossibleBlocs,
 	perf *perf.PerfCounter) {
 
 
-	// copie l'etat si demandé par l'appelant
-	if lockCopy != nil {
-		initialCols = initialCols.AllocNew(true)
-		lockCopy.Unlock()   // débloque l'execution du parent
-	}
-
 	taille := len(allBlocs.rows)
 	tryLines := allBlocs.rows[numLigneCourante]
 
@@ -102,18 +96,8 @@ func solveRecursif(allBlocs *allPossibleBlocs,
 
 	// alloue un espace pour recevoir les colonnes valides restantes après chaque ligne
 	nextCols := initialCols.AllocNew(false)
-
-	lockNext := new(sync.Mutex) // protege l'acces aux parametre de recursion
-	var waitChildCopy bool = true
-
 	// essaye toutes les combinaisons encore valides pour la ligne courante
 	for n, nextLigne := range tryLines {
-
-		// attend que la récursion lancée au tour précédent ait fini de copier ses paramètres
-		if waitChildCopy {
-			lockNext.Lock()
-			waitChildCopy = false
-		}
 
 		// parmi les colonnes reçues du parent, elimine celles incompatibles avec nextLine
 		ok := filtreColonnesInplace(allBlocs, nextLigne, numLigneCourante, initialCols, nextCols)
@@ -132,28 +116,20 @@ func solveRecursif(allBlocs *allPossibleBlocs,
 			solutions <- tabJeuFromIndexArray(allBlocs, tjPartiel, taille)
 			continue
 		}
-		// Prepare appel récursif bloquant sans copie des paramètres ( lockCopy=nil )
-		// -> pour execution par la même goroutine (recursion classique )
-		recurseNoCopy := func() {
-			solveRecursif(allBlocs, tjPartiel, numLigneCourante+1, nextCols, nil, wp, solutions, perf )
-		}
 
-		// Prepare appel recursif avec copie  des paramètres (lockCopy != nil)
+		// Prepare appel recursif avec copie  des paramètres systematique
 		// -> pour execution par un autre worker dans une autre goroutine
-		recurseWithCopy := func() {
-			solveRecursif(allBlocs, tjPartiel, numLigneCourante+1, nextCols, lockNext, wp, solutions, perf)
-		}
+		nextColsCopy := nextCols.AllocNew(true)
+		recurse:= func() {
+			solveRecursif(allBlocs, tjPartiel, numLigneCourante+1, nextColsCopy, nil, wp, solutions, perf)
+		} 
 
-		// essaie de continuer avec un worker, sinon recursion classique sans copie
-		accepted := wp.TryExec(recurseWithCopy)
-		if accepted {
-			// on met un flag pour attendre que l'appelé ait fini de copier ses paramètres au début du prochain tour
-			// lockNext est libere par l'appelé dès qu'il a fini
-			waitChildCopy = true
-			continue
+		// execute la recursion
+		accepted := wp.TryExec(recurse)
+		if ! accepted {
+			// si le workerpool a refusé la tâche on continue avec une récursion classique
+			recurse()
 		}
-		// si le workerpool a refusé la tâche on continue avec une récursion classique
-		recurseNoCopy()
 	}
 }
 
