@@ -89,7 +89,7 @@ func solveRecursif(allBlocs *allPossibleBlocs,
 	// copie l'etat si demandé par l'appelant
 	if lockCopy != nil {
 		initialCols = initialCols.AllocNew(true)
-		lockCopy.Unlock()
+		lockCopy.Unlock()   // débloque l'execution du parent
 	}
 
 	taille := len(allBlocs.rows)
@@ -132,13 +132,13 @@ func solveRecursif(allBlocs *allPossibleBlocs,
 			solutions <- tabJeuFromIndexArray(allBlocs, tjPartiel, taille)
 			continue
 		}
-		// Prepare appel récursif bloquant sans copie des paramètres
+		// Prepare appel récursif bloquant sans copie des paramètres ( lockCopy=nil )
 		// -> pour execution par la même goroutine (recursion classique )
 		recurseNoCopy := func() {
 			solveRecursif(allBlocs, tjPartiel, numLigneCourante+1, nextCols, nil, wp, solutions, perf )
 		}
 
-		// Prepare appel recursif avec copie  des paramètres
+		// Prepare appel recursif avec copie  des paramètres (lockCopy != nil)
 		// -> pour execution par un autre worker dans une autre goroutine
 		recurseWithCopy := func() {
 			solveRecursif(allBlocs, tjPartiel, numLigneCourante+1, nextCols, lockNext, wp, solutions, perf)
@@ -147,7 +147,7 @@ func solveRecursif(allBlocs *allPossibleBlocs,
 		// essaie de continuer avec un worker, sinon recursion classique sans copie
 		accepted := wp.TryExec(recurseWithCopy)
 		if accepted {
-			// on met un flag pour attendre que l'appelé ait fini e copier ses paramètres au début du prochain tour
+			// on met un flag pour attendre que l'appelé ait fini de copier ses paramètres au début du prochain tour
 			// lockNext est libere par l'appelé dès qu'il a fini
 			waitChildCopy = true
 			continue
@@ -215,7 +215,6 @@ func filtreColonnesInplace(allBlocs *allPossibleBlocs,
 		// vérifie si chaque element de initialCols est compatible avec la ligne fournie
 		for _, idxCol := range initialCols[numCol] {
 			cellCol = allBlocs.cols[numCol][idxCol][numLigne]
-			//cellCol := initialCol[numLigne]
 
 			// si out, ajoute l'index de la colonne dans le slice de destination
 			if cellLigne == cellCol {

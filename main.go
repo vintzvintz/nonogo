@@ -14,7 +14,7 @@ func main() {
 }
 
 func essai() {
-	tj := tabjeu.NewTabJeu(15, 42, 1003)
+	tj := tabjeu.NewTabJeu(15, 40, 1003)
 	tj.AfficheAvecComptes()
 	prob := tj.MakeProbleme()
 
