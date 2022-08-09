@@ -94,13 +94,11 @@ func solveRecursif(allBlocs *allPossibleBlocs,
 		perf.Inc(1)
 	}
 
-	// alloue un espace pour recevoir les colonnes valides restantes après chaque ligne
-	nextCols := initialCols.AllocNew(false)
 	// essaye toutes les combinaisons encore valides pour la ligne courante
 	for n, nextLigne := range tryLines {
 
 		// parmi les colonnes reçues du parent, elimine celles incompatibles avec nextLine
-		ok := filtreColonnesInplace(allBlocs, nextLigne, numLigneCourante, initialCols, nextCols)
+		nextCols,ok  := filtreColonnesAlloc(allBlocs, nextLigne, numLigneCourante, initialCols)
 
 		// abandonne définitivement nextLigne s'il n'y a plus assez de colonnes compatibles
 		if !ok {
@@ -119,9 +117,8 @@ func solveRecursif(allBlocs *allPossibleBlocs,
 
 		// Prepare appel recursif avec copie  des paramètres systematique
 		// -> pour execution par un autre worker dans une autre goroutine
-		nextColsCopy := nextCols.AllocNew(true)
 		recurse:= func() {
-			solveRecursif(allBlocs, tjPartiel, numLigneCourante+1, nextColsCopy, nil, wp, solutions, perf)
+			solveRecursif(allBlocs, tjPartiel, numLigneCourante+1, nextCols, nil, wp, solutions, perf)
 		} 
 
 		// execute la recursion
