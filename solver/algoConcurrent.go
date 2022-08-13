@@ -2,9 +2,7 @@ package solver
 
 import (
 	//"fmt"
-
 	"os"
-	"sync"
 	"time"
 
 	perf "vintz.fr/nonogram/perf"
@@ -75,50 +73,41 @@ func SolveConcurrent(prob TJ.Probleme, nbWorkers int, showPerf bool) chan *TJ.Ta
 }
 
 type TjPartiel [TJ.TAILLE_MAX]int
+type CopyDoneChan chan bool
 
 func solveRecursif(allBlocs *allPossibleBlocs,
 	tjPartiel TjPartiel, // index dans allBlocs des lignes déja placées (longueur variable entre 0 et [taille] éléments)
 	numLigneCourante int,
 	initialCols IdxColsSet, // index dans allBlocs des colonnes encore valides
-	lockCopy *sync.Mutex,
+	lockCopy CopyDoneChan,
 	wp *WorkerPool,
 	solutions chan *TJ.TabJeu,
 	pc *perf.PerfCounter) {
 
-
-	// copie l'etat si demandé par l'appelant
+	// copie l'etat si cela est demandé par l'appelant (recursion parallele, le parent est une goroutine différente )
+	// inutile si le parent est la même goroutine (recursion classique, même goroutine )
 	if lockCopy != nil {
 		initialCols = initialCols.AllocNew(true)
-		lockCopy.Unlock()   // débloque l'execution du parent
+		lockCopy <- true   // débloque l'execution du parent
 	}
-
-	taille := len(allBlocs.rows)
-	tryLines := allBlocs.rows[numLigneCourante]
 
 	// met à jour le compteur de vitesse
 	if pc != nil {
 		pc.Inc(1)
 	}
 
-	// alloue un espace pour recevoir les colonnes valides restantes après chaque ligne
-	nextCols := initialCols.AllocNew(false)
-
-	lockNext := new(sync.Mutex) // protege l'acces aux parametre de recursion
-	var waitChildCopy bool = true
+	taille := len(allBlocs.rows)
+	tryLines := allBlocs.rows[numLigneCourante]   // combinaisons de blocs (en ligne) à essayer sur la ligne courante 
+	nextCols := initialCols.AllocNew(false) 	// allocation d'espace pour recevoir les colonnes valides restantes après chaque ligne
+	waitChild := make(CopyDoneChan) // pour attendre la copie de l'état lors de la récursion concurrente (par une autre goroutine)
 
 	// essaye toutes les combinaisons encore valides pour la ligne courante
 	for n, nextLigne := range tryLines {
 
-		// attend que la récursion lancée au tour précédent ait fini de copier ses paramètres
-		if waitChildCopy {
-			lockNext.Lock()
-			waitChildCopy = false
-		}
-
 		// parmi les colonnes reçues du parent, elimine celles incompatibles avec nextLine
 		ok := filtreColonnesInplace(allBlocs, nextLigne, numLigneCourante, initialCols, nextCols)
 
-		// abandonne définitivement nextLigne s'il n'y a plus assez de colonnes compatibles
+		// condition d'arrêt : nextLigne est incompatible avec les colonnes encore valides à ce point de la recursion
 		if !ok {
 			continue
 		}
@@ -126,37 +115,34 @@ func solveRecursif(allBlocs *allPossibleBlocs,
 		// si la ligne est valide, on l'inscrit dans tjPartiel pour continuer la recherche
 		tjPartiel[numLigneCourante] = n
 
-		// condition d'arrêt : on a trouvé une solution si :
-		// toutes les lignes sont remplies (et on n'a pas abandonné la ligne en cours)
+		// condition d'arrêt : on a trouvé une solution si toutes les lignes sont remplies 
 		if numLigneCourante == taille-1 {
 			solutions <- tabJeuFromIndexArray(allBlocs, tjPartiel, taille)
 			continue
 		}
-		// Prepare appel récursif bloquant sans copie des paramètres ( lockCopy=nil )
-		// -> pour execution par la même goroutine (recursion classique )
+		// Prepare deux versions de l'appel récursif 
 		recurseNoCopy := func() {
+			// pour execution par la même goroutine, sans copie des paramètres (lockCopy=nil)  (recursion classique)
 			solveRecursif(allBlocs, tjPartiel, numLigneCourante+1, nextCols, nil, wp, solutions, pc )
 		}
-
-		// Prepare appel recursif avec copie  des paramètres (lockCopy != nil)
-		// -> pour execution par un autre worker dans une autre goroutine
 		recurseWithCopy := func() {
-			solveRecursif(allBlocs, tjPartiel, numLigneCourante+1, nextCols, lockNext, wp, solutions, pc)
+			//  pour execution (non bloquante) dans une autre goroutine avec copie des parametres
+			solveRecursif(allBlocs, tjPartiel, numLigneCourante+1, nextCols, waitChild, wp, solutions, pc)
 		}
 
-		// essaie de continuer avec un worker, sinon recursion classique sans copie
+		// Tente la recursion concurrente
 		accepted := wp.TryExec(recurseWithCopy)
 		if accepted {
-			// on met un flag pour attendre que l'appelé ait fini de copier ses paramètres au début du prochain tour
-			// lockNext est libere par l'appelé dès qu'il a fini
-			waitChildCopy = true
+			// attend que recurseWithCopy ait fini de copier ses paramètres
+			<-waitChild
 			continue
 		}
-		// si le workerpool a refusé la tâche on continue avec une récursion classique
+		// continue avec une récursion classique si la tâche a été refusée par le workerpool
 		recurseNoCopy()
 	}
 }
 
+/*
 // filtreColonnesAlloc alloue et renvoie une nouvelle structure
 // filteredCols rçoit les colonnes (désignées par leurs index dans allBlocs), compatibles avec la ligne indiquée
 func filtreColonnesAlloc(allBlocs *allPossibleBlocs,
@@ -195,6 +181,7 @@ func filtreColonnesAlloc(allBlocs *allPossibleBlocs,
 	}
 	return filteredCols, true
 }
+*/
 
 // filtreColonnesInplace est une versison sans allocation de filtreColonnes
 // filteredCols rçoit les colonnes (désignées par leurs index dans allBlocs), compatibles avec la ligne indiquée
