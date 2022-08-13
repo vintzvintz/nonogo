@@ -94,7 +94,7 @@ func solveRecursif(allBlocs *allPossibleBlocs,
 	// copie l'etat si cela est demandé par l'appelant (recursion parallele, le parent est une goroutine différente )
 	// inutile si le parent est la même goroutine (recursion classique, même goroutine )	
 	if lockCopy != nil {
-		initialCols = initialCols.AllocNew(true)
+		initialCols = initialCols.Copy()
 		tjCopy := make(TjPartiel, numLigneCourante, taille)
 		copy(tjCopy, tjPartiel )
 		tjPartiel = tjCopy
@@ -103,14 +103,14 @@ func solveRecursif(allBlocs *allPossibleBlocs,
 
 	// met à jour le compteur de vitesse
 	if pc != nil {
-		pc.Inc(1)
+		pc.Inc1()
 	}
 
 	// combinaisons de blocs (en ligne) à essayer sur la ligne courante
 	tryLines := allBlocs.rows[numLigneCourante] 
 
 	// allocation d'espace pour recevoir les colonnes valides restantes avec chaque ligne à essayer 
-	nextCols := initialCols.AllocNew(false)
+	nextCols := initialCols.AllocEmpty()
 	// augmente la longueur de tjPartiel pour recevoir l'index de la ligne en cours d'essai
 	tjPartiel = append(tjPartiel,-1)
 
@@ -194,19 +194,8 @@ func filtreColonnesInplace(allBlocs *allPossibleBlocs,
 	return true
 }
 
-// tabJeuFromIndex construit un tabJeu à partir des index de lignes
-func tabJeuFromIndexSlice(allBlocs *allPossibleBlocs, index []int) *TJ.TabJeu {
-	taille := len(index)
-	tj := make(TJ.TabJeu, taille)
-	for n, i := range index {
-		tj[n] = allBlocs.rows[n][i]
-	}
-	return &tj
-}
-
 // tabJeuFromIndex construit un tabJeu à partir d'un array d'index de lignes
 func tabJeuFromIndexArray(allBlocs *allPossibleBlocs, index TjPartiel, taille int) *TJ.TabJeu {
-	//taille := len(index)
 	tj := make(TJ.TabJeu, taille)
 	for n := 0; n < taille; n++ {
 		rows := allBlocs.rows[n]
@@ -216,16 +205,20 @@ func tabJeuFromIndexArray(allBlocs *allPossibleBlocs, index TjPartiel, taille in
 	return &tj
 }
 
-// AllocNew() alloue des slices de la même taille avec copie optionnelle du contenu
-func (src IdxColsSet) AllocNew(withCopy bool) (dst IdxColsSet) {
+
+func (src IdxColsSet) AllocEmpty() (dst IdxColsSet) {
 	dst = allocfilteredCols(len(src))
 	for numCol := range src {
-		if withCopy {
-			dst[numCol] = make(IdxCols, len(src[numCol])) // allocate same length as src
-			copy(dst[numCol], src[numCol])
-		} else {
-			dst[numCol] = make(IdxCols, 0, len(src[numCol])) // allocate capacity with lenght=0
-		}
+		dst[numCol] = make(IdxCols, 0, len(src[numCol])) // allocate capacity with lenght=0
+	}
+	return dst
+}
+
+func (src IdxColsSet) Copy() (dst IdxColsSet) {
+	dst = allocfilteredCols(len(src))
+	for numCol := range src {
+		dst[numCol] = make(IdxCols, len(src[numCol])) // allocate same length as src
+		copy(dst[numCol], src[numCol])
 	}
 	return dst
 }
