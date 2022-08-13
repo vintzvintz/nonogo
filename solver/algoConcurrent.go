@@ -83,7 +83,7 @@ func solveRecursif(allBlocs *allPossibleBlocs,
 	lockCopy *sync.Mutex,
 	wp *WorkerPool,
 	solutions chan *TJ.TabJeu,
-	perf *perf.PerfCounter) {
+	pc *perf.PerfCounter) {
 
 
 	// copie l'etat si demandé par l'appelant
@@ -96,8 +96,8 @@ func solveRecursif(allBlocs *allPossibleBlocs,
 	tryLines := allBlocs.rows[numLigneCourante]
 
 	// met à jour le compteur de vitesse
-	if perf != nil {
-		perf.Inc(1)
+	if pc != nil {
+		pc.Inc(1)
 	}
 
 	// alloue un espace pour recevoir les colonnes valides restantes après chaque ligne
@@ -135,13 +135,13 @@ func solveRecursif(allBlocs *allPossibleBlocs,
 		// Prepare appel récursif bloquant sans copie des paramètres ( lockCopy=nil )
 		// -> pour execution par la même goroutine (recursion classique )
 		recurseNoCopy := func() {
-			solveRecursif(allBlocs, tjPartiel, numLigneCourante+1, nextCols, nil, wp, solutions, perf )
+			solveRecursif(allBlocs, tjPartiel, numLigneCourante+1, nextCols, nil, wp, solutions, pc )
 		}
 
 		// Prepare appel recursif avec copie  des paramètres (lockCopy != nil)
 		// -> pour execution par un autre worker dans une autre goroutine
 		recurseWithCopy := func() {
-			solveRecursif(allBlocs, tjPartiel, numLigneCourante+1, nextCols, lockNext, wp, solutions, perf)
+			solveRecursif(allBlocs, tjPartiel, numLigneCourante+1, nextCols, lockNext, wp, solutions, pc)
 		}
 
 		// essaie de continuer avec un worker, sinon recursion classique sans copie
