@@ -51,11 +51,15 @@ func SolveConcurrent(prob TJ.Probleme, nbWorkers int, showPerf bool) chan *TJ.Ta
 		close(solutions)
 	}
 
+	startRecursion := func() {
+		tj := make(TjPartiel, 0, prob.Taille)
+		solveRecursif(&allBlocs, tj, colonnes, nil, workerPool, solutions, pc)
+	}
+
 	// lance la récursion
 	if nbWorkers > 0 {
-
 		workerPool.Exec(func() {
-			solveRecursif(&allBlocs, TjPartiel{}, 0, colonnes, nil, workerPool, solutions, pc)
+			startRecursion()
 		})
 		// goroutine nécessaire pour attendre la fin du traitment
 		go func() {
@@ -64,7 +68,7 @@ func SolveConcurrent(prob TJ.Probleme, nbWorkers int, showPerf bool) chan *TJ.Ta
 		}()
 	} else {
 		go func() {
-			solveRecursif(&allBlocs, TjPartiel{}, 0, colonnes, nil, workerPool, solutions, pc)
+			startRecursion()
 			termine() // pas la peine d'attendre dans une goroutine distincte du lancement
 		}()
 	}
@@ -72,23 +76,29 @@ func SolveConcurrent(prob TJ.Probleme, nbWorkers int, showPerf bool) chan *TJ.Ta
 	return solutions
 }
 
-type TjPartiel [TJ.TAILLE_MAX]int
+type TjPartiel []int
 type CopyDoneChan chan bool
 
 func solveRecursif(allBlocs *allPossibleBlocs,
 	tjPartiel TjPartiel, // index dans allBlocs des lignes déja placées (longueur variable entre 0 et [taille] éléments)
-	numLigneCourante int,
 	initialCols IdxColsSet, // index dans allBlocs des colonnes encore valides
 	lockCopy CopyDoneChan,
 	wp *WorkerPool,
 	solutions chan *TJ.TabJeu,
 	pc *perf.PerfCounter) {
+	//fmt.Printf("#%v tjPartiel ligne %v  %v (lockCopy %v)\n", goid(), numLigneCourante, tjPartiel, lockCopy)
+
+	taille := len(allBlocs.rows)
+	numLigneCourante := len(tjPartiel)
 
 	// copie l'etat si cela est demandé par l'appelant (recursion parallele, le parent est une goroutine différente )
-	// inutile si le parent est la même goroutine (recursion classique, même goroutine )
+	// inutile si le parent est la même goroutine (recursion classique, même goroutine )	
 	if lockCopy != nil {
 		initialCols = initialCols.AllocNew(true)
-		lockCopy <- true   // débloque l'execution du parent
+		tjCopy := make(TjPartiel, numLigneCourante, taille)
+		copy(tjCopy, tjPartiel )
+		tjPartiel = tjCopy
+		lockCopy <- true // débloque l'execution du parent
 	}
 
 	// met à jour le compteur de vitesse
@@ -96,10 +106,17 @@ func solveRecursif(allBlocs *allPossibleBlocs,
 		pc.Inc(1)
 	}
 
-	taille := len(allBlocs.rows)
-	tryLines := allBlocs.rows[numLigneCourante]   // combinaisons de blocs (en ligne) à essayer sur la ligne courante 
-	nextCols := initialCols.AllocNew(false) 	// allocation d'espace pour recevoir les colonnes valides restantes après chaque ligne
-	waitChild := make(CopyDoneChan) // pour attendre la copie de l'état lors de la récursion concurrente (par une autre goroutine)
+	// combinaisons de blocs (en ligne) à essayer sur la ligne courante
+	tryLines := allBlocs.rows[numLigneCourante] 
+
+	// allocation d'espace pour recevoir les colonnes valides restantes avec chaque ligne à essayer 
+	nextCols := initialCols.AllocNew(false)
+	// augmente la longueur de tjPartiel pour recevoir l'index de la ligne en cours d'essai
+	tjPartiel = append(tjPartiel,-1)
+
+	// pour attendre la copie de l'état lors de la récursion concurrente (par une autre goroutine)
+	waitChild := make(CopyDoneChan) 
+	
 
 	// essaye toutes les combinaisons encore valides pour la ligne courante
 	for n, nextLigne := range tryLines {
@@ -115,19 +132,19 @@ func solveRecursif(allBlocs *allPossibleBlocs,
 		// si la ligne est valide, on l'inscrit dans tjPartiel pour continuer la recherche
 		tjPartiel[numLigneCourante] = n
 
-		// condition d'arrêt : on a trouvé une solution si toutes les lignes sont remplies 
+		// condition d'arrêt : on a trouvé une solution si toutes les lignes sont remplies
 		if numLigneCourante == taille-1 {
 			solutions <- tabJeuFromIndexArray(allBlocs, tjPartiel, taille)
 			continue
 		}
-		// Prepare deux versions de l'appel récursif 
+		// Prepare deux versions de l'appel récursif
 		recurseNoCopy := func() {
 			// pour execution par la même goroutine, sans copie des paramètres (lockCopy=nil)  (recursion classique)
-			solveRecursif(allBlocs, tjPartiel, numLigneCourante+1, nextCols, nil, wp, solutions, pc )
+			solveRecursif(allBlocs, tjPartiel, nextCols, nil, wp, solutions, pc)
 		}
 		recurseWithCopy := func() {
-			//  pour execution (non bloquante) dans une autre goroutine avec copie des parametres
-			solveRecursif(allBlocs, tjPartiel, numLigneCourante+1, nextCols, waitChild, wp, solutions, pc)
+			//  pour execution dans une autre goroutine avec copie des parametres
+			solveRecursif(allBlocs, tjPartiel, nextCols, waitChild, wp, solutions, pc)
 		}
 
 		// Tente la recursion concurrente
@@ -142,46 +159,6 @@ func solveRecursif(allBlocs *allPossibleBlocs,
 	}
 }
 
-/*
-// filtreColonnesAlloc alloue et renvoie une nouvelle structure
-// filteredCols rçoit les colonnes (désignées par leurs index dans allBlocs), compatibles avec la ligne indiquée
-func filtreColonnesAlloc(allBlocs *allPossibleBlocs,
-	ligne TJ.LigneJeu,
-	numLigne int,
-	colonnes IdxColsSet) (filteredCols IdxColsSet, ok bool) {
-
-	taille := len(colonnes)
-
-	// filteredCols va recevoir les colonnes valides avec la ligne courante
-	// filteredCols = make(IdxColsSet, taille)
-	filteredCols = allocfilteredCols(taille)
-
-	for numCol := 0; numCol < taille; numCol++ {
-
-		// validCols va contenir toutes possibilités encore valides pour la colonne iCol
-		// TODO allouer en une seule fois
-		//validCols := make(IdxCols, 0, len(colonnes[numCol]))
-		validCols := allocValidCols(len(colonnes[numCol]))
-
-		cellLigne := ligne[numCol]
-
-		for _, n := range colonnes[numCol] {
-			col := (*allBlocs).cols[numCol][n]
-			cellCol := col[numLigne]
-			if cellLigne == cellCol {
-				validCols = append(validCols, n)
-			}
-		}
-
-		// arrete dès qu'une colonne est incompatible avec la ligne ajoutée
-		if len(validCols) == 0 {
-			return nil, false
-		}
-		filteredCols[numCol] = validCols
-	}
-	return filteredCols, true
-}
-*/
 
 // filtreColonnesInplace est une versison sans allocation de filtreColonnes
 // filteredCols rçoit les colonnes (désignées par leurs index dans allBlocs), compatibles avec la ligne indiquée
