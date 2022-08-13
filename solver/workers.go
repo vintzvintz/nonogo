@@ -1,7 +1,6 @@
 package solver
 
 import (
-	"fmt"
 	_ "fmt"
 	"sync"
 )
@@ -32,7 +31,7 @@ func NewWorkerPool(nbWorkers int) (wp *WorkerPool) {
 			//	fmt.Printf("Worker #%d  : end task\n", id)
 				wp.wg.Done()
 			}
-			fmt.Printf("End of worker #%d\n", id)
+			//fmt.Printf("End of worker #%d\n", id)
 		}(i)
 	}
 	return wp
