@@ -13,8 +13,6 @@ type étatJoué int
 */
 
 
-const TAILLE_MAX = 50   // longueur fixe pour tenter des allocations sur la stack au lieu du heap
-
 type Cellule byte
 
 const (

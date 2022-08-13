@@ -2,9 +2,7 @@ package solver
 
 import (
 	//"fmt"
-
 	"os"
-	"sync"
 	"time"
 
 	perf "vintz.fr/nonogram/perf"
@@ -53,11 +51,15 @@ func SolveConcurrent(prob TJ.Probleme, nbWorkers int, showPerf bool) chan *TJ.Ta
 		close(solutions)
 	}
 
+	startRecursion := func() {
+		tj := make(TjPartiel, 0, prob.Taille)
+		solveRecursif(&allBlocs, tj, colonnes, nil, workerPool, solutions, pc)
+	}
+
 	// lance la récursion
 	if nbWorkers > 0 {
-
 		workerPool.Exec(func() {
-			solveRecursif(&allBlocs, TjPartiel{}, 0, colonnes, nil, workerPool, solutions, pc)
+			startRecursion()
 		})
 		// goroutine nécessaire pour attendre la fin du traitment
 		go func() {
@@ -66,7 +68,7 @@ func SolveConcurrent(prob TJ.Probleme, nbWorkers int, showPerf bool) chan *TJ.Ta
 		}()
 	} else {
 		go func() {
-			solveRecursif(&allBlocs, TjPartiel{}, 0, colonnes, nil, workerPool, solutions, pc)
+			startRecursion()
 			termine() // pas la peine d'attendre dans une goroutine distincte du lancement
 		}()
 	}
@@ -74,51 +76,55 @@ func SolveConcurrent(prob TJ.Probleme, nbWorkers int, showPerf bool) chan *TJ.Ta
 	return solutions
 }
 
-type TjPartiel [TJ.TAILLE_MAX]int
+type TjPartiel []int
+type CopyDoneChan chan bool
 
 func solveRecursif(allBlocs *allPossibleBlocs,
 	tjPartiel TjPartiel, // index dans allBlocs des lignes déja placées (longueur variable entre 0 et [taille] éléments)
-	numLigneCourante int,
 	initialCols IdxColsSet, // index dans allBlocs des colonnes encore valides
-	lockCopy *sync.Mutex,
+	lockCopy CopyDoneChan,
 	wp *WorkerPool,
 	solutions chan *TJ.TabJeu,
-	perf *perf.PerfCounter) {
-
-
-	// copie l'etat si demandé par l'appelant
-	if lockCopy != nil {
-		initialCols = initialCols.AllocNew(true)
-		lockCopy.Unlock()   // débloque l'execution du parent
-	}
+	pc *perf.PerfCounter) {
+	//fmt.Printf("#%v tjPartiel ligne %v  %v (lockCopy %v)\n", goid(), numLigneCourante, tjPartiel, lockCopy)
 
 	taille := len(allBlocs.rows)
-	tryLines := allBlocs.rows[numLigneCourante]
+	numLigneCourante := len(tjPartiel)
 
-	// met à jour le compteur de vitesse
-	if perf != nil {
-		perf.Inc(1)
+	// copie l'etat si cela est demandé par l'appelant (recursion parallele, le parent est une goroutine différente )
+	// inutile si le parent est la même goroutine (recursion classique, même goroutine )	
+	if lockCopy != nil {
+		initialCols = initialCols.AllocNew(true)
+		tjCopy := make(TjPartiel, numLigneCourante, taille)
+		copy(tjCopy, tjPartiel )
+		tjPartiel = tjCopy
+		lockCopy <- true // débloque l'execution du parent
 	}
 
-	// alloue un espace pour recevoir les colonnes valides restantes après chaque ligne
-	nextCols := initialCols.AllocNew(false)
+	// met à jour le compteur de vitesse
+	if pc != nil {
+		pc.Inc(1)
+	}
 
-	lockNext := new(sync.Mutex) // protege l'acces aux parametre de recursion
-	var waitChildCopy bool = true
+	// combinaisons de blocs (en ligne) à essayer sur la ligne courante
+	tryLines := allBlocs.rows[numLigneCourante] 
+
+	// allocation d'espace pour recevoir les colonnes valides restantes avec chaque ligne à essayer 
+	nextCols := initialCols.AllocNew(false)
+	// augmente la longueur de tjPartiel pour recevoir l'index de la ligne en cours d'essai
+	tjPartiel = append(tjPartiel,-1)
+
+	// pour attendre la copie de l'état lors de la récursion concurrente (par une autre goroutine)
+	waitChild := make(CopyDoneChan) 
+	
 
 	// essaye toutes les combinaisons encore valides pour la ligne courante
 	for n, nextLigne := range tryLines {
 
-		// attend que la récursion lancée au tour précédent ait fini de copier ses paramètres
-		if waitChildCopy {
-			lockNext.Lock()
-			waitChildCopy = false
-		}
-
 		// parmi les colonnes reçues du parent, elimine celles incompatibles avec nextLine
 		ok := filtreColonnesInplace(allBlocs, nextLigne, numLigneCourante, initialCols, nextCols)
 
-		// abandonne définitivement nextLigne s'il n'y a plus assez de colonnes compatibles
+		// condition d'arrêt : nextLigne est incompatible avec les colonnes encore valides à ce point de la recursion
 		if !ok {
 			continue
 		}
@@ -126,75 +132,33 @@ func solveRecursif(allBlocs *allPossibleBlocs,
 		// si la ligne est valide, on l'inscrit dans tjPartiel pour continuer la recherche
 		tjPartiel[numLigneCourante] = n
 
-		// condition d'arrêt : on a trouvé une solution si :
-		// toutes les lignes sont remplies (et on n'a pas abandonné la ligne en cours)
+		// condition d'arrêt : on a trouvé une solution si toutes les lignes sont remplies
 		if numLigneCourante == taille-1 {
 			solutions <- tabJeuFromIndexArray(allBlocs, tjPartiel, taille)
 			continue
 		}
-		// Prepare appel récursif bloquant sans copie des paramètres ( lockCopy=nil )
-		// -> pour execution par la même goroutine (recursion classique )
+		// Prepare deux versions de l'appel récursif
 		recurseNoCopy := func() {
-			solveRecursif(allBlocs, tjPartiel, numLigneCourante+1, nextCols, nil, wp, solutions, perf )
+			// pour execution par la même goroutine, sans copie des paramètres (lockCopy=nil)  (recursion classique)
+			solveRecursif(allBlocs, tjPartiel, nextCols, nil, wp, solutions, pc)
 		}
-
-		// Prepare appel recursif avec copie  des paramètres (lockCopy != nil)
-		// -> pour execution par un autre worker dans une autre goroutine
 		recurseWithCopy := func() {
-			solveRecursif(allBlocs, tjPartiel, numLigneCourante+1, nextCols, lockNext, wp, solutions, perf)
+			//  pour execution dans une autre goroutine avec copie des parametres
+			solveRecursif(allBlocs, tjPartiel, nextCols, waitChild, wp, solutions, pc)
 		}
 
-		// essaie de continuer avec un worker, sinon recursion classique sans copie
+		// Tente la recursion concurrente
 		accepted := wp.TryExec(recurseWithCopy)
 		if accepted {
-			// on met un flag pour attendre que l'appelé ait fini de copier ses paramètres au début du prochain tour
-			// lockNext est libere par l'appelé dès qu'il a fini
-			waitChildCopy = true
+			// attend que recurseWithCopy ait fini de copier ses paramètres
+			<-waitChild
 			continue
 		}
-		// si le workerpool a refusé la tâche on continue avec une récursion classique
+		// continue avec une récursion classique si la tâche a été refusée par le workerpool
 		recurseNoCopy()
 	}
 }
 
-// filtreColonnesAlloc alloue et renvoie une nouvelle structure
-// filteredCols rçoit les colonnes (désignées par leurs index dans allBlocs), compatibles avec la ligne indiquée
-func filtreColonnesAlloc(allBlocs *allPossibleBlocs,
-	ligne TJ.LigneJeu,
-	numLigne int,
-	colonnes IdxColsSet) (filteredCols IdxColsSet, ok bool) {
-
-	taille := len(colonnes)
-
-	// filteredCols va recevoir les colonnes valides avec la ligne courante
-	// filteredCols = make(IdxColsSet, taille)
-	filteredCols = allocfilteredCols(taille)
-
-	for numCol := 0; numCol < taille; numCol++ {
-
-		// validCols va contenir toutes possibilités encore valides pour la colonne iCol
-		// TODO allouer en une seule fois
-		//validCols := make(IdxCols, 0, len(colonnes[numCol]))
-		validCols := allocValidCols(len(colonnes[numCol]))
-
-		cellLigne := ligne[numCol]
-
-		for _, n := range colonnes[numCol] {
-			col := (*allBlocs).cols[numCol][n]
-			cellCol := col[numLigne]
-			if cellLigne == cellCol {
-				validCols = append(validCols, n)
-			}
-		}
-
-		// arrete dès qu'une colonne est incompatible avec la ligne ajoutée
-		if len(validCols) == 0 {
-			return nil, false
-		}
-		filteredCols[numCol] = validCols
-	}
-	return filteredCols, true
-}
 
 // filtreColonnesInplace est une versison sans allocation de filtreColonnes
 // filteredCols rçoit les colonnes (désignées par leurs index dans allBlocs), compatibles avec la ligne indiquée

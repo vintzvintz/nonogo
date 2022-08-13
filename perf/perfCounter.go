@@ -9,10 +9,10 @@ import (
 )
 
 type PerfCounter struct {
-	count int64
-	stop  chan struct{}
-	out   io.Writer
-	wg    *sync.WaitGroup
+	count  int64
+	stop   chan struct{}
+	out    io.Writer
+	wg     *sync.WaitGroup
 }
 
 // NewPerfCounter cree et démarre un compteur d'evenements
@@ -22,7 +22,7 @@ func NewPerfCounter(interval time.Duration, out io.Writer) *PerfCounter {
 	pc.out = out
 	pc.wg = new(sync.WaitGroup)
 
-	// le WaitGroup sert pour gaarantir que le dernier message sera affiché : PerfCounter.Stop() est "bloquant"
+	// le WaitGroup sert à bloquer sur Stop() pour garantir que le dernier message sera affiché
 	pc.wg.Add(1)
 	go pc.run(interval, out)
 	return pc
@@ -41,7 +41,7 @@ func (pc *PerfCounter) Inc(n int64) {
 
 // Get() renvoie la valeur courante du compteur
 func (pc *PerfCounter) Get() int64 {
-	return pc.count
+	return atomic.LoadInt64(&pc.count)
 }
 
 func (pc *PerfCounter) run(interval time.Duration, out io.Writer) {
@@ -55,9 +55,9 @@ func (pc *PerfCounter) run(interval time.Duration, out io.Writer) {
 
 	startTime := time.Now()
 	lastTime := startTime
-	lastCount := pc.Get()    //should be 0....
-	tick := time.NewTicker(interval) 
-	
+	lastCount := pc.Get() //should be 0....
+	tick := time.NewTicker(interval)
+
 loop:
 	for {
 		select {
