@@ -39,6 +39,11 @@ func (pc *PerfCounter) Inc(n int64) {
 	atomic.AddInt64(&pc.count, n)
 }
 
+// Int() incrémente de compteur de n unités. Int() est thread-safe
+func (pc *PerfCounter) Inc1() {
+	atomic.AddInt64(&pc.count, 1)
+}
+
 // Get() renvoie la valeur courante du compteur
 func (pc *PerfCounter) Get() int64 {
 	return atomic.LoadInt64(&pc.count)
