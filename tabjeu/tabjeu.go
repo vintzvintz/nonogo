@@ -9,7 +9,7 @@ import (
 
 const DEFAULT_SIZE = 15
 const DEFAULT_SEED = 1005
-const DEFAULT_RATIO = 0.43
+const DEFAULT_RATIO = 0.44
 
 type Cellule uint8
 

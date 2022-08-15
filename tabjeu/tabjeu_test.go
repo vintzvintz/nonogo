@@ -11,7 +11,9 @@ type tjDef struct {
 
 func TestTabJeuCreate(t *testing.T) {
 	tbl := []tjDef{
-		{ taille: 10,  ratio: 0},
+		{ taille: 1,   ratio: 0.00},
+		{ taille: 1,   ratio: 1.00},
+		{ taille: 10,  ratio: 0.00},
 		{ taille: 10,  ratio: 0.10},
 		{ taille: 10,  ratio: 1.00},
 		{ taille: 15,  ratio: 0.50},
