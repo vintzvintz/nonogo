@@ -25,8 +25,6 @@ type allPossibleBlocs struct {
 	cols lineListSet
 }
 
-type SolverFunc func(TJ.Probleme) chan *TJ.TabJeu
-
 // buildAllSequences construit la liste des ensembles de lignes (ou colonnes)
 // à partir d'une liste de listes de longueurs de blocs
 func buildAllSequences(blocs []TJ.BlocCount) lineListSet {

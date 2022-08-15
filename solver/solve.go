@@ -11,6 +11,8 @@ import (
 type IdxCols []int
 type IdxColsSet []IdxCols
 
+type SolverFunc func(TJ.Probleme) chan *TJ.TabJeu
+
 func makeConcurrentSolver(nbWorkers int, showPerf bool) SolverFunc {
 	solver := func(prob TJ.Probleme) chan *TJ.TabJeu {
 		return SolveConcurrent(prob, nbWorkers, showPerf)
