@@ -7,6 +7,7 @@ import (
 type Diff [][]bool
 
 // Direction de comptage des séquences
+type Direction int
 const (
 	LIGNE   = 1
 	COLONNE = 2
@@ -28,7 +29,7 @@ func (tj *TabJeu) MakeProbleme() Probleme {
 
 // CompteBlocs compte les blocs dans la direction indiquée
 // renvoie une liste  de longueurs des blocs cellules pleines consécutives
-func (tj TabJeu) CompteBlocs(direction int) BlocCountList {
+func (tj TabJeu) CompteBlocs(direction Direction) BlocCountList {
 
 	taille := len(tj)
 	resultat := make([]BlocCount, taille)
@@ -122,27 +123,31 @@ func (diff Diff) Count() (nb int) {
 }
 
 // Compare() compare tj avec ref et renvoie un tableau avec 'true' pour chaque cellule différente
-func (tj TabJeu) Compare(ref TabJeu, diff Diff) {
+func (tj TabJeu) Compare(ref TabJeu, diff Diff) (nbDiff int) {
 
 	taille := len(tj)
 
-	if len(ref) != taille  || len(diff)!=taille {
+	if len(ref) != taille  || (diff!=nil && len(diff)!=taille) {
 		panic("Nombre de lignes incohérent")
 	}
 
-	//compare chaque cellule et note les différences dans *diff
+	//compare chaque cellule et note les différences dans diff
 	for i, ligne := range tj {
 
-		if len(ligne)!=taille || len(ref[i])!=taille || len(diff[i])!=taille {
+		if len(ligne)!=taille || len(ref[i])!=taille || (diff!=nil && len(diff[i])!=taille) {
 			panic("Nombre de colonnes incohérent")
 		}
 	
 		for j, cell := range ligne {
 			if cell.EstPlein() != ref[i][j].EstPlein() {
-				diff[i][j] = true
+				if diff!=nil {
+					diff[i][j] = true
+				}
+				nbDiff++
 			}
 		}
 	}
+	return nbDiff
 }
 
 
