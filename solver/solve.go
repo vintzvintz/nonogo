@@ -21,8 +21,8 @@ func makeConcurrentSolver(nbWorkers int, showPerf bool) SolverFunc {
 func SolveConcurrent(prob TJ.Probleme, nbWorkers int, showPerf bool) chan *TJ.TabJeu {
 	solutions := make(chan *TJ.TabJeu)
 	allBlocs := allPossibleBlocs{
-		rows: buildAllSequences(prob.Taille, prob.BlocsLignes),
-		cols: buildAllSequences(prob.Taille, prob.BlocsColonnes),
+		rows: buildAllSequences(prob.BlocsLignes),
+		cols: buildAllSequences(prob.BlocsColonnes),
 	}
 
 	var workerPool *WorkerPool = NewWorkerPool(nbWorkers)

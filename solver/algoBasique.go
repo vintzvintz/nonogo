@@ -132,7 +132,7 @@ func makeTestSolution(seqColSolution []TJ.BlocCount) func(tj *TJ.TabJeu) bool {
 // Trouvesolutions revoie toutes les solutions possibles du nonogramme
 // à partir des longueurs de blocs en lignes et en colonnes
 func SolveBourrin(prob TJ.Probleme) chan *TJ.TabJeu {
-	allSeqs := buildAllSequences(prob.Taille, prob.BlocsLignes)
+	allSeqs := buildAllSequences(prob.BlocsLignes)
 
 	// closure qui teste si tj est une solution valide
 	testFunc := makeTestSolution(prob.BlocsColonnes)
