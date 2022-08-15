@@ -4,8 +4,8 @@ import (
 	"fmt"
 )
 
-type BlocCount []int
-type TransposedBlocCount []int
+
+type Diff [][]bool
 
 // Direction de comptage des séquences
 const (
@@ -101,6 +101,52 @@ func (tj TabJeu) CompareBlocsColonnes(blocsRef []BlocCount) bool {
 	return true
 }
 
+// NewDiff() alloue un tableau de booléens pour recevoir la comparaison de deux tabjeu.TabJeu
+func NewDiff(taille int) (diff Diff) {
+	diff = make(Diff, taille)
+	for i := range diff {
+		diff[i] = make([]bool, taille)
+	}
+	return diff
+}
+
+// Count() compte le nombre d'elements 'true'
+func (diff Diff) Count() (nb int) {
+	for _, ligne := range diff{
+		for _, cell := range ligne {
+			if cell {
+				nb++
+			}
+		}
+	}
+	return nb
+}
+
+// Compare() compare tj avec ref et renvoie un tableau avec 'true' pour chaque cellule différente
+func (tj TabJeu) Compare(ref TabJeu, diff Diff) {
+
+	taille := len(tj)
+
+	if len(ref) != taille  || len(diff)!=taille {
+		panic("Nombre de lignes incohérent")
+	}
+
+	//compare chaque cellule et note les différences dans *diff
+	for i, ligne := range tj {
+
+		if len(ligne)!=taille || len(ref[i])!=taille || len(diff[i])!=taille {
+			panic("Nombre de colonnes incohérent")
+		}
+	
+		for j, cell := range ligne {
+			if cell.EstPlein() != ref[i][j].EstPlein() {
+				diff[i][j] = true
+			}
+		}
+	}
+}
+
+
 func (tj TabJeu) AfficheAvecComptes() {
 
 	seqL := tj.CompteBlocs(LIGNE)
@@ -114,32 +160,4 @@ func (tj TabJeu) AfficheAvecComptes() {
 		fmt.Printf("%v %v\n", tj[i], seqL[i])
 	}
 
-}
-
-// transposeSeqColonnes convertit en lignes les comptes de séquences en colonne
-// ceci est utile seulement pour l'affichage
-func transposeSeqColonnes(seqC []BlocCount) []TransposedBlocCount {
-
-	seqTranspo := make( []TransposedBlocCount, 0)
-
-	// 	on ne connait pas à l'avance le nb max de blocs
-	for rang := 0; ; rang++ {
-		var empty bool = true // sort de la boucle quand toutes les séquences en colonnes sont épuisées
-
-		// transpo contient les séquences en colonnes de même rang
-		ligneTranspo := make(TransposedBlocCount, len(seqC))
-
-		for i := range seqC {
-			// valeur par défaut 0 si plus de séquences dans la colonne
-			if rang < len(seqC[i]) {
-				empty = false
-				ligneTranspo[i] = seqC[i][rang]
-			}
-		}
-		if empty {
-			break
-		}
-		seqTranspo = append(seqTranspo, ligneTranspo)
-	}
-	return seqTranspo
 }
