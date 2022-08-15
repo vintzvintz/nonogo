@@ -20,7 +20,7 @@ func TestTabJeuCreate(t *testing.T) {
 			t.Errorf("Nb colonnes = %d, attendu %d", len(tj), taille)
 		}
 		for _, cell := range ligne {
-			if cell == Plein {
+			if cell.EstPlein() {
 				nb_plein++
 			}
 		}

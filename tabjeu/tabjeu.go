@@ -8,41 +8,38 @@ import (
 )
 
 /*
-type étatBase int
-type étatJoué int
-*/
-
-
-type Cellule byte
-
-const (
-	Vide  Cellule = 0
-	Plein Cellule = 1
-)
-
-/*
-const (
-	Blanc   étatJoué = 0
-	coché   étatJoué = 1
-	colorié étatJoué = 2
-)
-*/
-
-/*
-type CelluleBase interface {
-	EstPlein() bool
+struct remplacée par un uint8 et des bitmasks => gain de 20% à 30% sur la vitesse du solveur...
+type Cellule struct {
+	plein bool     // Etat de base de la cellule : vide ou plein
+	revelé bool    // L'état est révélé dès le début du jeu
+	jouéVide bool  // La cellule est jouée vide
+	jouéPlein bool // La cellule est jouée pleine
 }
 */
+
+
+type Cellule uint8
+
+const (
+	plein Cellule = 1 << iota+1   // Etat de base de la cellule : vide ou plein
+	revelé               // L'état est révélé dès le début du jeu
+	jouéVide             // La cellule est jouée vide
+	jouéPlein            // La cellule est jouée pleine
+)
 
 // TabJeu contient les cellules du jeu sous forme de slice 2D
 type LigneJeu []Cellule
 type TabJeu []LigneJeu
 
-/*
+
 func (c Cellule) EstPlein() bool {
-	return c == Plein
+	return c & plein != 0
 }
-*/
+
+func (c *Cellule) Remplit() {
+	*c = *c | plein 
+}
+
 
 // NewTabJeu crée un nouveau tableau de jeu
 func NewTabJeu(taille int, ratioRemplissage int, seed int64) TabJeu {
@@ -60,7 +57,7 @@ func NewTabJeu(taille int, ratioRemplissage int, seed int64) TabJeu {
 	// colorie certaines cellules
 	for i:= range cellules {
 		if rand.Intn(100) < ratioRemplissage {
-			cellules[i] = Plein
+			cellules[i].Remplit()
 		}
 	}
 	// construit tabjeu en découpant en lignes les cellules alouées
@@ -101,7 +98,7 @@ func (tj TabJeu) String() string {
 
 func (c Cellule) String() string {
 	s := "  "  // deux espaces pour une cellule vide
-	if c == Plein {
+	if c.EstPlein() {
 		s = "\u2588\u2588"
 	}
 	return s

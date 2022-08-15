@@ -50,12 +50,12 @@ func (tj TabJeu) CompteBlocs(direction int) []BlocCount {
 			default:
 				panic(fmt.Sprintf("Direction %d inconnue", direction))
 			}
-			if cell == Plein {
+			if cell.EstPlein() {
 				long++
 			}
 
 			// fin d'un bloc ou fin de la ligne
-			if ( cell == Vide && long > 0) || j == taille-1 {
+			if ( !cell.EstPlein() && long > 0) || j == taille-1 {
 				if long > 0 {
 					blocs = append(blocs, long)
 					long = 0
@@ -83,11 +83,11 @@ func (tj TabJeu) CompareBlocsColonnes(blocsRef []BlocCount) bool {
 			var cell Cellule = tj[j][i]
 
 			// debut ou continuation d'un bloc
-			if cell == Plein {
+			if cell.EstPlein() {
 				long++
 			}
 			// fin d'un bloc ou fin de la ligne
-			if ( cell != Plein && long > 0) || j == taille-1 {
+			if ( !cell.EstPlein() && long > 0) || j == taille-1 {
 				// compare avec la longueur du bloc de référence
 				if (rang < len(blocsRef[i])) && (long != blocsRef[i][rang]) {
 					return false

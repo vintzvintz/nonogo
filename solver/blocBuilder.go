@@ -74,7 +74,7 @@ func buildSequences(taille int, blocs TJ.BlocCount) lineList {
 
 			// remplit la ligne à partir de startPos jusqu'à la fin du bloc
 			if (startPos) <= i && (i < startPos+blocs[0]) {
-				seqCourante[i] = TJ.Plein
+				seqCourante[i].Remplit()
 				continue
 			}
 		}
