@@ -5,5 +5,5 @@ import (
 )
 
 func TestPrincipal( t *testing.T ) {
-	essai()
+	real_main()
 }

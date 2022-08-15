@@ -41,7 +41,7 @@ func checkSolution(sol TJ.TabJeu, blocsLignes, blocsColonnes TJ.BlocCountList) b
 func TestConcurrent(t *testing.T) {
 
 	tj := TJ.NewTabJeu(15, TJ.DEFAULT_RATIO, TJ.DEFAULT_SEED)
-	tj.AfficheAvecComptes()
+	fmt.Println(tj)
 
 	bcLigne := tj.CompteBlocs(TJ.LIGNE)
 	bcCol := tj.CompteBlocs(TJ.COLONNE)

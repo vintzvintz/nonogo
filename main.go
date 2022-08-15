@@ -2,31 +2,21 @@ package main
 
 import (
 	"fmt"
-	"runtime"
-	"time"
 
-	"vintz.fr/nonogram/solver"
-	"vintz.fr/nonogram/tabjeu"
+	"vintz.fr/nonogram/level"
 )
 
 func main() {
-	essai()
+	real_main()
 }
 
-func essai() {
-	tj := tabjeu.NewTabJeu(tabjeu.DEFAULT_SIZE, tabjeu.DEFAULT_RATIO, tabjeu.DEFAULT_SEED)
-	tj.AfficheAvecComptes()
-	valide := desambigueTabJeu(tj)
-
-
-	valide.AfficheAvecComptes()
-	desambigueTabJeu(valide)
+func real_main() {
+	lvl := level.NewDefault()
+	fmt.Println(lvl)
 }
 
 
-
-
-
+/*
 
 
 func desambigueTabJeu(tj tabjeu.TabJeu) (valide tabjeu.TabJeu) {
@@ -64,3 +54,4 @@ func desambigueTabJeu(tj tabjeu.TabJeu) (valide tabjeu.TabJeu) {
 
 	return valide
 }
+*/

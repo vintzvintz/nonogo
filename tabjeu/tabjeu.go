@@ -7,9 +7,10 @@ import (
 	"time"
 )
 
-const DEFAULT_SIZE = 8
+const DEFAULT_SIZE = 17
 const DEFAULT_SEED = 1006
-const DEFAULT_RATIO = 0.40
+const DEFAULT_RATIO = 0.45
+
 
 type Cellule uint8
 
@@ -103,14 +104,6 @@ func (src TabJeu) Copy() (dst TabJeu) {
 	return dst
 }
 
-func (tj TabJeu) StringsSlice() []string {
-	str := make([]string, len(tj))
-	for l, ligne := range tj {
-		str[l] = ligne.String()
-	}
-	return str
-}
-
 func (sc BlocCount) String() string {
 	var elems []string
 	for _, count := range sc {
@@ -129,7 +122,19 @@ func (tbc TransposedBlocCount) String() string {
 }
 
 func (tj TabJeu) String() string {
-	return strings.Join(tj.StringsSlice(), "\n") + "\n"
+
+	blocsLignes := tj.CompteBlocs(LIGNE)
+	blocsCols := tj.CompteBlocs(COLONNE)
+	blocsColsT := blocsCols.transpose()
+
+	var str string
+	for _, l := range blocsColsT {
+		str += fmt.Sprintf("%v\n", l)
+	}
+	for i := range tj {
+		str += fmt.Sprintf("%v %v\n", tj[i], blocsLignes[i])
+	}
+	return str
 }
 
 func (lj LigneJeu) String() string {

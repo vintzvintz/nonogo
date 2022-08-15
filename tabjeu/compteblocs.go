@@ -122,7 +122,7 @@ func (diff Diff) Count() (nb int) {
 	return nb
 }
 
-// Compare() compare tj avec ref et renvoie un tableau avec 'true' pour chaque cellule différente
+// Compare() compare tj avec ref et met à jour diff avec 'true' pour chaque cellule différente
 func (tj TabJeu) Compare(ref TabJeu, diff Diff) (nbDiff int) {
 
 	taille := len(tj)
@@ -150,18 +150,3 @@ func (tj TabJeu) Compare(ref TabJeu, diff Diff) (nbDiff int) {
 	return nbDiff
 }
 
-
-func (tj TabJeu) AfficheAvecComptes() {
-
-	blocsLignes := tj.CompteBlocs(LIGNE)
-	blocsCols := tj.CompteBlocs(COLONNE)
-	blocsColsT := blocsCols.transpose()
-
-	for _, l := range blocsColsT {
-		fmt.Printf("%v\n", l)
-	}
-	for i := range tj {
-		fmt.Printf("%v %v\n", tj[i], blocsLignes[i])
-	}
-
-}
