@@ -11,21 +11,13 @@ import (
 type IdxCols []int
 type IdxColsSet []IdxCols
 
-type SolverFunc func(TJ.Probleme) chan *TJ.TabJeu
+type SolverFunc func(TJ.TabJeu) chan TJ.TabJeu
 
-func makeConcurrentSolver(nbWorkers int, showPerf bool) SolverFunc {
-	solver := func(prob TJ.Probleme) chan *TJ.TabJeu {
-		return SolveConcurrent(prob, nbWorkers, showPerf)
-	}
-	return solver
-}
 
-func SolveConcurrent(prob TJ.Probleme, nbWorkers int, showPerf bool) chan *TJ.TabJeu {
-	solutions := make(chan *TJ.TabJeu)
-	allBlocs := allPossibleBlocs{
-		rows: buildAllSequences(prob.BlocsLignes),
-		cols: buildAllSequences(prob.BlocsColonnes),
-	}
+func SolveConcurrent(tj TJ.TabJeu, nbWorkers int, showPerf bool) chan TJ.TabJeu {
+	taille := len(tj)
+	solutions := make(chan TJ.TabJeu)
+	allBlocs := buildPossibleBlocs(tj)
 
 	var workerPool *WorkerPool = NewWorkerPool(nbWorkers)
 
@@ -36,7 +28,7 @@ func SolveConcurrent(prob TJ.Probleme, nbWorkers int, showPerf bool) chan *TJ.Ta
 
 	// prepare la liste initiale des colonnes valides = toutes les combinaisons possibles
 	allCols := allBlocs.cols
-	colonnes := make(IdxColsSet, prob.Taille)
+	colonnes := make(IdxColsSet, taille)
 	for numCol := range allCols {
 		colsN := make(IdxCols, len(allCols[numCol]))
 		for n := range allCols[numCol] {
@@ -53,7 +45,7 @@ func SolveConcurrent(prob TJ.Probleme, nbWorkers int, showPerf bool) chan *TJ.Ta
 	}
 
 	startRecursion := func() {
-		tj := make(TjPartiel, 0, prob.Taille)
+		tj := make(TjPartiel, 0, taille)
 		solveRecursif(&allBlocs, tj, colonnes, nil, workerPool, solutions, pc)
 	}
 
@@ -83,7 +75,7 @@ func solveRecursif(allBlocs *allPossibleBlocs,
 	initialCols IdxColsSet, // index dans allBlocs des colonnes encore valides
 	lockCopy CopyDoneChan,
 	wp *WorkerPool,
-	solutions chan *TJ.TabJeu,
+	solutions chan TJ.TabJeu,
 	pc *perf.PerfCounter) {
 	//fmt.Printf("#%v tjPartiel ligne %v  %v (lockCopy %v)\n", goid(), numLigneCourante, tjPartiel, lockCopy)
 
@@ -191,14 +183,14 @@ func filtreColonnesInplace(allBlocs *allPossibleBlocs,
 }
 
 // tabJeuFromIndex construit un tabJeu à partir d'un array d'index de lignes
-func tabJeuFromIndexArray(allBlocs *allPossibleBlocs, index TjPartiel, taille int) *TJ.TabJeu {
+func tabJeuFromIndexArray(allBlocs *allPossibleBlocs, index TjPartiel, taille int) TJ.TabJeu {
 	tj := make(TJ.TabJeu, taille)
 	for n := 0; n < taille; n++ {
 		rows := allBlocs.rows[n]
 		idx := index[n]
 		tj[n] = rows[idx]
 	}
-	return &tj
+	return tj
 }
 
 func (src IdxColsSet) AllocEmpty() (dst IdxColsSet) {

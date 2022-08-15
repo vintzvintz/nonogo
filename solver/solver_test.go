@@ -8,6 +8,7 @@ import (
 	TJ "vintz.fr/nonogram/tabjeu"
 )
 
+
 func compareBlocList(blocs1, blocs2 []TJ.BlocCount) bool {
 
 	if len(blocs1) != len(blocs2) {
@@ -28,22 +29,25 @@ func compareBlocList(blocs1, blocs2 []TJ.BlocCount) bool {
 	return true
 }
 
-func checkSolution(prob TJ.Probleme, sol *TJ.TabJeu) bool {
-	lignesOk := compareBlocList(prob.BlocsLignes, sol.CompteBlocs(TJ.LIGNE))
-	colsOk := compareBlocList(prob.BlocsColonnes, sol.CompteBlocs(TJ.COLONNE))
+
+
+func checkSolution(sol TJ.TabJeu, blocsLignes, blocsColonnes TJ.BlocCountList) bool {
+	lignesOk := compareBlocList(blocsLignes, sol.CompteBlocs(TJ.LIGNE))
+	colsOk := compareBlocList(blocsColonnes, sol.CompteBlocs(TJ.COLONNE))
 	return colsOk && lignesOk
 }
 
+
 func TestConcurrent(t *testing.T) {
 
-	//tj := TJ.NewTabJeu(15, 45, 1003)
-	tj := TJ.NewTabJeu(15, 0.44, 1005)
+	tj := TJ.NewTabJeu(15, TJ.DEFAULT_RATIO, TJ.DEFAULT_SEED)
 	tj.AfficheAvecComptes()
-	prob := tj.MakeProbleme()
+
+	bcLigne := tj.CompteBlocs(TJ.LIGNE)
+	bcCol := tj.CompteBlocs(TJ.COLONNE)
 
 	nbWorkers := []int{0, 1, 2, 4, 6, 12, 100}
-
-	//nbWorkers := []int{1, 2}
+	//nbWorkers := []int{0}
 
 	// retient le nombre de solutions pour chaque nombre de workers
 	nbSolutions := make([]int, len(nbWorkers))
@@ -56,19 +60,27 @@ func TestConcurrent(t *testing.T) {
 		solver := makeConcurrentSolver(nbWorkers[i], true)
 
 		// verifie toutes les solutions renvoyées
-		var nbBad, nbTotal int
-		for sol := range solver(prob) {
-
+		var nbExact, nbBad, nbTotal int
+		for sol:= range solver(tj) {
+			
 			//sol.AfficheAvecComptes()
-			if !checkSolution(prob, sol) {
+			// est-ce la solution exacte ?
+			if tj.Compare(sol,nil)==0 {
+				nbExact++
+			}
+			// est-ce une solution valide différente ?
+			if !checkSolution( tj, bcLigne, bcCol) {
 				nbBad++
 			}
 			nbTotal++
 		}
 		duree := time.Since(startTime)
 		t.Logf("%s : %d solutions trouvées en %v\n", txt, nbTotal, duree)
-		if nbBad > 0 {
-			t.Errorf("%d/%d solutions erronées", nbBad, nbTotal)
+		if nbBad>0 {
+			t.Errorf("%d/%d solutions invalides\n", nbBad, nbTotal)
+		}
+		if nbExact != 1 {
+			t.Errorf("Solution exacte non trouvée\n")
 		}
 		nbSolutions[i] = nbTotal
 	}
@@ -80,4 +92,11 @@ func TestConcurrent(t *testing.T) {
 			break
 		}
 	}
+}
+
+func makeConcurrentSolver(nbWorkers int, showPerf bool) SolverFunc {
+	solver := func(prob TJ.TabJeu) chan TJ.TabJeu {
+		return SolveConcurrent(prob, nbWorkers, showPerf)
+	}
+	return solver
 }

@@ -25,6 +25,63 @@ type allPossibleBlocs struct {
 	cols lineListSet
 }
 
+func buildPossibleBlocs(tj TJ.TabJeu) allPossibleBlocs {
+
+	// compte les blocs de cellules consecutuves dans tj
+	// construit toutes les lignes et colonnes possibles avec les longueurs de blocs mesurées
+	// conserve uniquement celles compatibles avec les cellules révéléés dans tj
+
+	bcLigne := tj.CompteBlocs(TJ.LIGNE)
+	allRows := buildAllSequences(bcLigne)
+	possibleRows := filtreSequences(allRows, tj, TJ.LIGNE)
+
+	bcCol := tj.CompteBlocs(TJ.COLONNE)
+	allCols := buildAllSequences(bcCol)
+	possibleCols := filtreSequences(allCols, tj, TJ.COLONNE)
+
+	return allPossibleBlocs{
+		rows: possibleRows,
+		cols: possibleCols,
+	}
+}
+
+// filtreSequences renvoie les elements de all compatibles avec les cellules révélées dans tj
+func filtreSequences(all lineListSet, tj TJ.TabJeu, direction TJ.Direction) (filtered lineListSet) {
+
+	taille := len(tj)
+	if len(all) != taille {
+		panic("Incohérence des dimensions")
+	}
+
+	filteredSet := make(lineListSet, taille)
+	for i, lignes := range all { // de 0  à taille-1
+		filteredLines := make(lineList, 0)
+	iterlines:
+		for _, ligne := range lignes { // itere sur toutes les possibilités pour la ligne ou colonne i
+			for j, cell := range ligne { // itere sur les cellules dans l'autre dimension ( colonne ou ligne )
+
+				// récupere la cellule correspondante dans tj
+				var refCell TJ.Cellule
+				switch direction {
+				case TJ.LIGNE:
+					refCell = tj[i][j]
+				case TJ.COLONNE:
+					refCell = tj[j][i]
+				}
+
+				// si la cellule dans tj est révélée, elle doit être identique
+				// si elle ne l'est pas, on ignore la ligne courante
+				if refCell.EstRévélé() && (refCell.EstPlein() != cell.EstPlein()) {
+					continue iterlines
+				}
+			}
+			filteredLines = append(filteredLines, ligne)
+		}
+		filteredSet[i] = filteredLines
+	}
+	return filteredSet
+}
+
 // buildAllSequences construit la liste des ensembles de lignes (ou colonnes)
 // à partir d'une liste de listes de longueurs de blocs
 func buildAllSequences(blocs []TJ.BlocCount) lineListSet {
@@ -61,7 +118,7 @@ func buildAllSequences(blocs []TJ.BlocCount) lineListSet {
 func buildSequences(taille int, blocs TJ.BlocCount) lineList {
 	// cas particulier des lignes complètement vides
 	if len(blocs) == 0 {
-		ligneVide := make(TJ.LigneJeu, taille) // zero-value = Vide 
+		ligneVide := make(TJ.LigneJeu, taille) // zero-value = Vide
 		return lineList{ligneVide}
 	}
 
@@ -136,5 +193,3 @@ func (pl indexedLineSet) String() string {
 	str += pl.lines.String()
 	return str
 }
-
-

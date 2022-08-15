@@ -14,9 +14,14 @@ func main() {
 }
 
 func essai() {
-	tj := tabjeu.NewTabJeu(15, 0.43, 1005)
+	tj := tabjeu.NewTabJeu(tabjeu.DEFAULT_SIZE, tabjeu.DEFAULT_RATIO, tabjeu.DEFAULT_SEED)
 	tj.AfficheAvecComptes()
-	prob := tj.MakeProbleme()
+	valideProbleme(tj)
+}
+
+func valideProbleme(tj tabjeu.TabJeu) {
+
+	taille := len(tj)
 
 	nbCPU := runtime.NumCPU()
 	_ = nbCPU
@@ -27,13 +32,23 @@ func essai() {
 	for iter := 0; iter < 1; iter++ {
 		startTime := time.Now()
 		var nbSol int
-		for sol := range solver.SolveConcurrent(prob, nbWorkers, true) {
-			_ = sol
+		var prev tabjeu.TabJeu
+		var diff tabjeu.Diff = tabjeu.NewDiff(taille)
+		for solution := range solver.SolveConcurrent(tj, nbWorkers, true) {
+
+			if prev != nil {
+				solution.Compare(prev, diff)
+			}
+			prev = solution
 			//sol.AfficheAvecComptes()
 			//fmt.Println(sol)
 			nbSol++
 		}
+
+		fmt.Printf("%v cellules ambigues\n", diff.Count())
+
 		duree := time.Since(startTime)
 		fmt.Printf("%s : %d solutions trouvées en %v\n", txt, nbSol, duree)
 	}
+
 }
