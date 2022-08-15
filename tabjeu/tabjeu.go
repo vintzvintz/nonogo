@@ -42,25 +42,34 @@ func (c *Cellule) Remplit() {
 
 
 // NewTabJeu crée un nouveau tableau de jeu
-func NewTabJeu(taille int, ratioRemplissage int, seed int64) TabJeu {
+func NewTabJeu(taille int, ratioRemplissage float32, seed int64) TabJeu {
 	if seed == 0 {
 		seed = time.Now().Unix()
 	}
 	rand.Seed(seed)
 
-	// tableau de jeu représenté par un slice à 2 dimensions
-	tj := make(TabJeu, taille)
-
 	// alloue toutes les cellules en une seule fois
 	cellules := make(LigneJeu, taille*taille)
 
-	// colorie certaines cellules
-	for i:= range cellules {
-		if rand.Intn(100) < ratioRemplissage {
-			cellules[i].Remplit()
+	// calcule le nb de cellules à remplir
+	nbPlein := int( float32(taille * taille) * ratioRemplissage )
+	if nbPlein > taille*taille {
+		panic( "Ratio de remplissage trop élevé")
+	}
+
+	// remplit le nb de cellule requis
+	for n:=0; n<nbPlein; n++ {
+		for {
+			i := rand.Intn(len(cellules))
+			if !cellules[i].EstPlein() {
+				cellules[i].Remplit()
+				break
+			}
 		}
 	}
-	// construit tabjeu en découpant en lignes les cellules alouées
+
+	// tabjeu est un slice à 2 dimensions construit en découpant le bloc de cellules alouées
+	tj := make(TabJeu, taille)
 	for l := range tj {
 		tj[l], cellules = cellules[:taille], cellules[taille:]
 	}

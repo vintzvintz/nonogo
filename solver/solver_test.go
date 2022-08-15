@@ -37,7 +37,7 @@ func checkSolution(prob TJ.Probleme, sol *TJ.TabJeu) bool {
 func TestConcurrent(t *testing.T) {
 
 	//tj := TJ.NewTabJeu(15, 45, 1003)
-	tj := TJ.NewTabJeu(15, 42, 1003)
+	tj := TJ.NewTabJeu(15, 0.40, 1004)
 	tj.AfficheAvecComptes()
 	prob := tj.MakeProbleme()
 
