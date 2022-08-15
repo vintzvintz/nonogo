@@ -1,10 +1,31 @@
 package solver
 
-import(
+import (
+	"fmt"
 	"sync"
-
 	TJ "vintz.fr/nonogram/tabjeu"
 )
+
+// lineList est une liste de lignes
+// contrairement à TabJeu la largeur n'est pas forcément égale à la hauteur
+type lineList []TJ.LigneJeu
+
+// allPossibleLines est un slice de la même longueur que TabJeu
+// chaque élement est l'ensemble des valeurs possibles pour la ligne correspondante
+type lineListSet []lineList
+
+// structure intermédiaire pour construire l'ensemble des lignes possibles
+type indexedLineSet struct {
+	num   int
+	lines lineList
+}
+
+type allPossibleBlocs struct {
+	rows lineListSet
+	cols lineListSet
+}
+
+type SolverFunc func(TJ.Probleme) chan *TJ.TabJeu
 
 // buildAllSequences construit la liste des ensembles de lignes (ou colonnes)
 // à partir d'une liste de listes de longueurs de blocs
@@ -42,9 +63,6 @@ func buildSequences(taille int, blocs TJ.BlocCount) lineList {
 	// cas particulier des lignes complètement vides
 	if len(blocs) == 0 {
 		ligneVide := make(TJ.LigneJeu, taille) // zero-value = Vide 
-//		for i := range ligneVide {
-//			ligneVide[i] = cellVide
-//		}
 		return lineList{ligneVide}
 	}
 
@@ -97,3 +115,27 @@ func buildSequences(taille int, blocs TJ.BlocCount) lineList {
 	}
 	return result
 }
+
+func (l lineList) String() string {
+	var str string = ""
+	for _, line := range l {
+		str = str + fmt.Sprintf("%v\n", line)
+	}
+	return str
+}
+
+func (all lineListSet) String() string {
+	var str string
+	for _, pl := range all {
+		str += pl.String()
+	}
+	return str
+}
+
+func (pl indexedLineSet) String() string {
+	var str string = fmt.Sprintf("Sequences possibles pour la ligne %d\n", pl.num)
+	str += pl.lines.String()
+	return str
+}
+
+
