@@ -7,18 +7,8 @@ import (
 	"time"
 )
 
-/*
-struct remplacée par un uint8 et des bitmasks => gain de 20% à 30% sur la vitesse du solveur...
-type Cellule struct {
-	plein bool     // Etat de base de la cellule : vide ou plein
-	revelé bool    // L'état est révélé dès le début du jeu
-	jouéVide bool  // La cellule est jouée vide
-	jouéPlein bool // La cellule est jouée pleine
-}
-*/
 
 type Cellule uint8
-
 const (
 	plein     Cellule = 1<<iota + 1 // Etat de base de la cellule : vide ou plein
 	revelé                          // L'état est révélé dès le début du jeu
@@ -26,10 +16,12 @@ const (
 	jouéPlein                       // La cellule est jouée pleine
 )
 
+
 // TabJeu contient les cellules du jeu sous forme de slice 2D
 type LigneJeu []Cellule
 type TabJeu []LigneJeu
 type BlocCount []int
+type BlocCountList []BlocCount
 type TransposedBlocCount []int
 
 
@@ -124,8 +116,7 @@ func (c Cellule) String() string {
 
 
 // transposeSeqColonnes convertit en lignes les comptes de séquences en colonne
-// ceci est utile seulement pour l'affichage
-func transposeSeqColonnes(seqC []BlocCount) []TransposedBlocCount {
+func (blocs BlocCountList) transpose() []TransposedBlocCount {
 
 	seqTranspo := make( []TransposedBlocCount, 0)
 
@@ -133,22 +124,22 @@ func transposeSeqColonnes(seqC []BlocCount) []TransposedBlocCount {
 		var empty bool = true // sort de la boucle quand toutes les séquences en colonnes sont épuisées
 
 		// transpo contient les séquences en colonnes de même rang
-		ligneTranspo := make(TransposedBlocCount, len(seqC))
+		ligneTranspo := make(TransposedBlocCount, len(blocs))
 
-		for i := range seqC {
+		for i := range blocs {
 			// commence par le dernier bloc (bas du tableau)
-			rang_inverse := len(seqC[i])-1-rang
+			rang_inverse := len(blocs[i])-1-rang
 			
 			if rang_inverse >= 0 {
 				empty = false
-				ligneTranspo[i] = seqC[i][rang_inverse]
+				ligneTranspo[i] = blocs[i][rang_inverse]
 			}
 		}
 		if empty {
 			break
 		}
 		// 	on ne connait pas à l'avance le nb max de blocs
-		// donc on alloue/cpoie pour chaque rang
+		// donc on alloue/copie pour chaque rangée avec inversion de l'ordre
 		prev := seqTranspo
 		seqTranspo = []TransposedBlocCount{ ligneTranspo }
 		seqTranspo = append(seqTranspo, prev...)

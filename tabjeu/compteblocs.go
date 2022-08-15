@@ -4,7 +4,6 @@ import (
 	"fmt"
 )
 
-
 type Diff [][]bool
 
 // Direction de comptage des séquences
@@ -29,7 +28,7 @@ func (tj *TabJeu) MakeProbleme() Probleme {
 
 // CompteBlocs compte les blocs dans la direction indiquée
 // renvoie une liste  de longueurs des blocs cellules pleines consécutives
-func (tj TabJeu) CompteBlocs(direction int) []BlocCount {
+func (tj TabJeu) CompteBlocs(direction int) BlocCountList {
 
 	taille := len(tj)
 	resultat := make([]BlocCount, taille)
@@ -70,7 +69,7 @@ func (tj TabJeu) CompteBlocs(direction int) []BlocCount {
 // CompteBlocsCompare compte les blocs dans la direction indiquée
 // renvoie vrai si les blocs sont identiques à la référence
 // version optimisée de CompteBlocs sans allocations
-func (tj TabJeu) CompareBlocsColonnes(blocsRef []BlocCount) bool {
+func (tj TabJeu) CompareBlocsColonnes(blocsRef BlocCountList) bool {
 
 	taille := len(tj)
 	for i := 0; i < taille; i++ {
@@ -149,15 +148,15 @@ func (tj TabJeu) Compare(ref TabJeu, diff Diff) {
 
 func (tj TabJeu) AfficheAvecComptes() {
 
-	seqL := tj.CompteBlocs(LIGNE)
-	seqC := tj.CompteBlocs(COLONNE)
-	seqCTranspo := transposeSeqColonnes(seqC)
+	blocsLignes := tj.CompteBlocs(LIGNE)
+	blocsCols := tj.CompteBlocs(COLONNE)
+	blocsColsT := blocsCols.transpose()
 
-	for _, l := range seqCTranspo {
+	for _, l := range blocsColsT {
 		fmt.Printf("%v\n", l)
 	}
 	for i := range tj {
-		fmt.Printf("%v %v\n", tj[i], seqL[i])
+		fmt.Printf("%v %v\n", tj[i], blocsLignes[i])
 	}
 
 }
