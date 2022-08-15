@@ -95,9 +95,7 @@ func solveRecursif(allBlocs *allPossibleBlocs,
 	// inutile si le parent est la même goroutine (recursion classique, même goroutine )	
 	if lockCopy != nil {
 		initialCols = initialCols.Copy()
-		tjCopy := make(TjPartiel, numLigneCourante, taille)
-		copy(tjCopy, tjPartiel )
-		tjPartiel = tjCopy
+		tjPartiel = tjPartiel.Copy(taille)
 		lockCopy <- true // débloque l'execution du parent
 	}
 
@@ -117,7 +115,6 @@ func solveRecursif(allBlocs *allPossibleBlocs,
 	// pour attendre la copie de l'état lors de la récursion concurrente (par une autre goroutine)
 	waitChild := make(CopyDoneChan) 
 	
-
 	// essaye toutes les combinaisons encore valides pour la ligne courante
 	for n, nextLigne := range tryLines {
 
@@ -139,7 +136,7 @@ func solveRecursif(allBlocs *allPossibleBlocs,
 		}
 		// Prepare deux versions de l'appel récursif
 		recurseNoCopy := func() {
-			// pour execution par la même goroutine, sans copie des paramètres (lockCopy=nil)  (recursion classique)
+			// pour execution par la même goroutine, sans copie des paramètres (lockCopy=nil) 
 			solveRecursif(allBlocs, tjPartiel, nextCols, nil, wp, solutions, pc)
 		}
 		recurseWithCopy := func() {
@@ -174,9 +171,8 @@ func filtreColonnesInplace(allBlocs *allPossibleBlocs,
 		// reset de la destination
 		filteredCols[numCol] = filteredCols[numCol][:0]
 
-		cellLigne = ligne[numCol] // lookup en dehors de la boucle
-
 		// vérifie si chaque element de initialCols est compatible avec la ligne fournie
+		cellLigne = ligne[numCol] // lookup en dehors de la boucle
 		for _, idxCol := range initialCols[numCol] {
 			cellCol = allBlocs.cols[numCol][idxCol][numLigne]
 
@@ -186,7 +182,7 @@ func filtreColonnesInplace(allBlocs *allPossibleBlocs,
 			}
 		}
 
-		// arrete dès qu'une colonne est incompatible avec la ligne ajoutée
+		// termine dès qu'une colonne est incompatible avec la ligne testée
 		if len(filteredCols[numCol]) == 0 {
 			return false
 		}
@@ -209,7 +205,7 @@ func tabJeuFromIndexArray(allBlocs *allPossibleBlocs, index TjPartiel, taille in
 func (src IdxColsSet) AllocEmpty() (dst IdxColsSet) {
 	dst = allocfilteredCols(len(src))
 	for numCol := range src {
-		dst[numCol] = make(IdxCols, 0, len(src[numCol])) // allocate capacity with lenght=0
+		dst[numCol] = allocIdxCols(0, len(src[numCol])) // allocate capacity with lenght=0
 	}
 	return dst
 }
@@ -217,16 +213,26 @@ func (src IdxColsSet) AllocEmpty() (dst IdxColsSet) {
 func (src IdxColsSet) Copy() (dst IdxColsSet) {
 	dst = allocfilteredCols(len(src))
 	for numCol := range src {
-		dst[numCol] = make(IdxCols, len(src[numCol])) // allocate same length as src
+		dst[numCol] = allocIdxCols(len(src[numCol]), len(src[numCol])) // allocate same length as src
 		copy(dst[numCol], src[numCol])
 	}
 	return dst
 }
 
-func allocValidCols(capacité int) IdxCols {
-	return make(IdxCols, 0, capacité)
+func (src TjPartiel) Copy(capa int) (dst TjPartiel) {
+	dst = allocTjPartiel( len(src), capa )
+	copy( dst, src)
+	return dst
 }
 
+
+// wrappers pour mieux identifier les allocations avec pprof (devraient être inlinés)
+func allocIdxCols(long, capa int) IdxCols {
+	return make(IdxCols, long, capa)
+}
 func allocfilteredCols(n int) IdxColsSet {
 	return make(IdxColsSet, n)
+}
+func allocTjPartiel(long, capa int) TjPartiel {
+	return make(TjPartiel, long, capa)
 }
