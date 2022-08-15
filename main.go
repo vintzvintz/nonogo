@@ -16,10 +16,20 @@ func main() {
 func essai() {
 	tj := tabjeu.NewTabJeu(tabjeu.DEFAULT_SIZE, tabjeu.DEFAULT_RATIO, tabjeu.DEFAULT_SEED)
 	tj.AfficheAvecComptes()
-	valideProbleme(tj)
+	valide := desambigueTabJeu(tj)
+
+
+	valide.AfficheAvecComptes()
+	desambigueTabJeu(valide)
 }
 
-func valideProbleme(tj tabjeu.TabJeu) {
+
+
+
+
+
+
+func desambigueTabJeu(tj tabjeu.TabJeu) (valide tabjeu.TabJeu) {
 
 	taille := len(tj)
 
@@ -29,26 +39,28 @@ func valideProbleme(tj tabjeu.TabJeu) {
 	nbWorkers := nbCPU
 	txt := fmt.Sprintf("%d workers", nbWorkers)
 
-	for iter := 0; iter < 1; iter++ {
-		startTime := time.Now()
-		var nbSol int
-		var prev tabjeu.TabJeu
-		var diff tabjeu.Diff = tabjeu.NewDiff(taille)
-		for solution := range solver.SolveConcurrent(tj, nbWorkers, true) {
+	startTime := time.Now()
+	var nbSol int
+	var prev tabjeu.TabJeu
+	var diff tabjeu.Diff = tabjeu.NewDiff(taille)
+	for solution := range solver.SolveConcurrent(tj, nbWorkers, true) {
 
-			if prev != nil {
-				solution.Compare(prev, diff)
-			}
-			prev = solution
-			//sol.AfficheAvecComptes()
-			//fmt.Println(sol)
-			nbSol++
+		if prev != nil {
+			solution.Compare(prev, diff)
 		}
-
-		fmt.Printf("%v cellules ambigues\n", diff.Count())
-
-		duree := time.Since(startTime)
-		fmt.Printf("%s : %d solutions trouvées en %v\n", txt, nbSol, duree)
+		prev = solution
+		solution.AfficheAvecComptes()
+		//fmt.Println(sol)
+		nbSol++
 	}
 
+	fmt.Printf("%v cellules ambigues\n", diff.Count())
+
+	duree := time.Since(startTime)
+	fmt.Printf("%s : %d solutions trouvées en %v\n", txt, nbSol, duree)
+	
+	valide = tj.Copy()
+	valide.ReveleVides(diff)
+
+	return valide
 }

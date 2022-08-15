@@ -7,9 +7,9 @@ import (
 	"time"
 )
 
-const DEFAULT_SIZE = 15
-const DEFAULT_SEED = 1005
-const DEFAULT_RATIO = 0.44
+const DEFAULT_SIZE = 8
+const DEFAULT_SEED = 1006
+const DEFAULT_RATIO = 0.40
 
 type Cellule uint8
 
@@ -47,27 +47,31 @@ func (c *Cellule) Révèle() {
 
 // NewTabJeu crée un nouveau tableau de jeu
 func NewTabJeu(taille int, ratioRemplissage float32, seed int64) TabJeu {
-	if seed == 0 {
-		seed = time.Now().Unix()
-	}
-	rand.Seed(seed)
 
 	// alloue toutes les cellules en une seule fois
 	cellules := make(LigneJeu, taille*taille)
 
-	// calcule le nb de cellules à remplir
-	nbPlein := int(float32(taille*taille) * ratioRemplissage)
-	if nbPlein > taille*taille {
-		panic("Ratio de remplissage trop élevé")
-	}
+	if ratioRemplissage > 0 {
+		// initialise le pseudo-random
+		if seed == 0 {
+			seed = time.Now().Unix()
+		}
+		rand.Seed(seed)
 
-	// remplit le nb de cellule requis
-	for n := 0; n < nbPlein; n++ {
-		for {
-			i := rand.Intn(len(cellules))
-			if !cellules[i].EstPlein() {
-				cellules[i].Remplit()
-				break
+		// calcule le nb de cellules à remplir
+		nbPlein := int(float32(taille*taille) * ratioRemplissage)
+		if nbPlein > taille*taille {
+			panic("Ratio de remplissage trop élevé")
+		}
+
+		// remplit le nb de cellule requis
+		for n := 0; n < nbPlein; n++ {
+			for {
+				i := rand.Intn(len(cellules))
+				if !cellules[i].EstPlein() {
+					cellules[i].Remplit()
+					break
+				}
 			}
 		}
 	}
@@ -78,6 +82,25 @@ func NewTabJeu(taille int, ratioRemplissage float32, seed int64) TabJeu {
 		tj[l], cellules = cellules[:taille], cellules[taille:]
 	}
 	return tj
+}
+
+func (tj TabJeu) ReveleVides(ambigu Diff) {
+	for i := range tj {
+		for j := range tj[i] {
+			if ambigu[i][j] && !tj[i][j].EstPlein() {
+				tj[i][j].Révèle()
+				fmt.Printf("Révèle cellule (%d,%d)\n", i, j)
+			}
+		}
+	}
+}
+
+func (src TabJeu) Copy() (dst TabJeu) {
+	dst = NewTabJeu(len(src), 0, 0)
+	for i := range src {
+		copy(dst[i], src[i])
+	}
+	return dst
 }
 
 func (tj TabJeu) StringsSlice() []string {
@@ -118,6 +141,9 @@ func (lj LigneJeu) String() string {
 }
 
 func (c Cellule) String() string {
+	if c.EstRévélé() {
+		return "XX"
+	}
 	if c.EstPlein() {
 		return "\u2588\u2588"
 	}
@@ -138,7 +164,6 @@ func (blocs BlocCountList) transpose() []TransposedBlocCount {
 		for i := range blocs {
 			// commence par le dernier bloc (bas du tableau)
 			rang_inverse := len(blocs[i]) - 1 - rang
-
 			if rang_inverse >= 0 {
 				empty = false
 				ligneTranspo[i] = blocs[i][rang_inverse]
