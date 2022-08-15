@@ -57,9 +57,7 @@ func SolveConcurrent(prob TJ.Probleme, nbWorkers int, showPerf bool) chan *TJ.Ta
 
 	// lance la récursion
 	if nbWorkers > 0 {
-		workerPool.Exec(func() {
-			startRecursion()
-		})
+		workerPool.Exec(startRecursion)
 		// goroutine nécessaire pour attendre la fin du traitment
 		go func() {
 			workerPool.Wait()
