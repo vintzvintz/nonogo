@@ -7,15 +7,18 @@ import (
 	"time"
 )
 
+const DEFAULT_SIZE = 15
+const DEFAULT_SEED = 1005
+const DEFAULT_RATIO = 0.43
 
 type Cellule uint8
-const (
-	plein     Cellule = 1<<iota + 1 // Etat de base de la cellule : vide ou plein
-	revelé                          // L'état est révélé dès le début du jeu
-	jouéVide                        // La cellule est jouée vide
-	jouéPlein                       // La cellule est jouée pleine
-)
 
+const (
+	PLEIN     Cellule = 1 << iota // Etat de base de la cellule : vide ou plein
+	REVELE                        // L'état est révélé dès le début du jeu
+	JOUEVIDE                      // La cellule est jouée vide
+	JOUEPLEIN                     // La cellule est jouée pleine
+)
 
 // TabJeu contient les cellules du jeu sous forme de slice 2D
 type LigneJeu []Cellule
@@ -24,15 +27,22 @@ type BlocCount []int
 type BlocCountList []BlocCount
 type TransposedBlocCount []int
 
-
 const SEP = ""
 
 func (c Cellule) EstPlein() bool {
-	return c&plein != 0
+	return c&PLEIN == PLEIN
 }
 
 func (c *Cellule) Remplit() {
-	*c = *c | plein
+	*c = *c | PLEIN
+}
+
+func (c Cellule) EstRévélé() bool {
+	return c&REVELE == REVELE
+}
+
+func (c *Cellule) Révèle() {
+	*c = *c | REVELE
 }
 
 // NewTabJeu crée un nouveau tableau de jeu
@@ -81,10 +91,10 @@ func (tj TabJeu) StringsSlice() []string {
 func (sc BlocCount) String() string {
 	var elems []string
 	for _, count := range sc {
-		if count==0 {
-			elems = append( elems, "  ")
+		if count == 0 {
+			elems = append(elems, "  ")
 			continue
-		} 
+		}
 		elems = append(elems, fmt.Sprintf("%2d", count))
 	}
 	return strings.Join(elems, SEP)
@@ -114,11 +124,10 @@ func (c Cellule) String() string {
 	return "  " // deux espaces pour une cellule vide
 }
 
-
 // transposeSeqColonnes convertit en lignes les comptes de séquences en colonne
 func (blocs BlocCountList) transpose() []TransposedBlocCount {
 
-	seqTranspo := make( []TransposedBlocCount, 0)
+	seqTranspo := make([]TransposedBlocCount, 0)
 
 	for rang := 0; ; rang++ {
 		var empty bool = true // sort de la boucle quand toutes les séquences en colonnes sont épuisées
@@ -128,8 +137,8 @@ func (blocs BlocCountList) transpose() []TransposedBlocCount {
 
 		for i := range blocs {
 			// commence par le dernier bloc (bas du tableau)
-			rang_inverse := len(blocs[i])-1-rang
-			
+			rang_inverse := len(blocs[i]) - 1 - rang
+
 			if rang_inverse >= 0 {
 				empty = false
 				ligneTranspo[i] = blocs[i][rang_inverse]
@@ -141,7 +150,7 @@ func (blocs BlocCountList) transpose() []TransposedBlocCount {
 		// 	on ne connait pas à l'avance le nb max de blocs
 		// donc on alloue/copie pour chaque rangée avec inversion de l'ordre
 		prev := seqTranspo
-		seqTranspo = []TransposedBlocCount{ ligneTranspo }
+		seqTranspo = []TransposedBlocCount{ligneTranspo}
 		seqTranspo = append(seqTranspo, prev...)
 	}
 	return seqTranspo
