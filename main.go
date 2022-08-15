@@ -14,14 +14,14 @@ func main() {
 }
 
 func essai() {
-	tj := tabjeu.NewTabJeu(15, 0.41, 1004)
+	tj := tabjeu.NewTabJeu(15, 0.40, 1005)
 	tj.AfficheAvecComptes()
 	prob := tj.MakeProbleme()
 
 	nbCPU := runtime.NumCPU()
 	_ = nbCPU
 
-	nbWorkers := 12
+	nbWorkers := nbCPU
 	txt := fmt.Sprintf("%d workers", nbWorkers)
 
 	for iter := 0; iter < 1; iter++ {

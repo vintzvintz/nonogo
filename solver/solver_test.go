@@ -37,7 +37,7 @@ func checkSolution(prob TJ.Probleme, sol *TJ.TabJeu) bool {
 func TestConcurrent(t *testing.T) {
 
 	//tj := TJ.NewTabJeu(15, 45, 1003)
-	tj := TJ.NewTabJeu(15, 0.40, 1004)
+	tj := TJ.NewTabJeu(15, 0.44, 1005)
 	tj.AfficheAvecComptes()
 	prob := tj.MakeProbleme()
 
@@ -76,7 +76,7 @@ func TestConcurrent(t *testing.T) {
 	// vérifie que le nombre de solutions ne dépend pas du nb de workers
 	for i := 0; i < len(nbWorkers)-1; i++ {
 		if nbSolutions[i] != nbSolutions[i+1] {
-			t.Errorf("Nombre de solutions différent selon le nb de workers")
+			t.Errorf("Nombre de solutions variable selon le nb de workers")
 			break
 		}
 	}
