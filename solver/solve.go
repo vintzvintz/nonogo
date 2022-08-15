@@ -1,7 +1,6 @@
 package solver
 
 import (
-	//"fmt"
 	"os"
 	"time"
 
@@ -92,7 +91,7 @@ func solveRecursif(allBlocs *allPossibleBlocs,
 	numLigneCourante := len(tjPartiel)
 
 	// copie l'etat si cela est demandé par l'appelant (recursion parallele, le parent est une goroutine différente )
-	// inutile si le parent est la même goroutine (recursion classique, même goroutine )	
+	// inutile si le parent est la même goroutine (recursion classique, même goroutine )
 	if lockCopy != nil {
 		initialCols = initialCols.Copy()
 		tjPartiel = tjPartiel.Copy(taille)
@@ -105,16 +104,18 @@ func solveRecursif(allBlocs *allPossibleBlocs,
 	}
 
 	// combinaisons de blocs (en ligne) à essayer sur la ligne courante
-	tryLines := allBlocs.rows[numLigneCourante] 
+	tryLines := allBlocs.rows[numLigneCourante]
 
-	// allocation d'espace pour recevoir les colonnes valides restantes avec chaque ligne à essayer 
+	// allocation d'espace pour recevoir les colonnes valides restantes avec chaque ligne à essayer
 	nextCols := initialCols.AllocEmpty()
+
 	// augmente la longueur de tjPartiel pour recevoir l'index de la ligne en cours d'essai
-	tjPartiel = append(tjPartiel,-1)
+	// le tableau associé n'est pas modifié, le tjPartiel du parent non plus (car le slice est passé par valeur)
+	tjPartiel = append(tjPartiel, -1)
 
 	// pour attendre la copie de l'état lors de la récursion concurrente (par une autre goroutine)
-	waitChild := make(CopyDoneChan) 
-	
+	waitChild := make(CopyDoneChan)
+
 	// essaye toutes les combinaisons encore valides pour la ligne courante
 	for n, nextLigne := range tryLines {
 
@@ -136,7 +137,7 @@ func solveRecursif(allBlocs *allPossibleBlocs,
 		}
 		// Prepare deux versions de l'appel récursif
 		recurseNoCopy := func() {
-			// pour execution par la même goroutine, sans copie des paramètres (lockCopy=nil) 
+			// pour execution par la même goroutine, sans copie des paramètres (lockCopy=nil)
 			solveRecursif(allBlocs, tjPartiel, nextCols, nil, wp, solutions, pc)
 		}
 		recurseWithCopy := func() {
@@ -200,7 +201,6 @@ func tabJeuFromIndexArray(allBlocs *allPossibleBlocs, index TjPartiel, taille in
 	return &tj
 }
 
-
 func (src IdxColsSet) AllocEmpty() (dst IdxColsSet) {
 	dst = allocfilteredCols(len(src))
 	for numCol := range src {
@@ -219,11 +219,10 @@ func (src IdxColsSet) Copy() (dst IdxColsSet) {
 }
 
 func (src TjPartiel) Copy(capa int) (dst TjPartiel) {
-	dst = allocTjPartiel( len(src), capa )
-	copy( dst, src)
+	dst = allocTjPartiel(len(src), capa)
+	copy(dst, src)
 	return dst
 }
-
 
 // wrappers pour mieux identifier les allocations avec pprof (devraient être inlinés)
 func allocIdxCols(long, capa int) IdxCols {
