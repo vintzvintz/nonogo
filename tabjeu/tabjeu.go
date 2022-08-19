@@ -26,7 +26,7 @@ type LigneJeu []Cellule
 type TabJeu []LigneJeu
 type BlocCount []int
 type BlocCountList []BlocCount
-type TransposedBlocCount []int
+type TransposedBlocCount []int    // pour l'affichage seulement
 
 const SEP = ""
 
