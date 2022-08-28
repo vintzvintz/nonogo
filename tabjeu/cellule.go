@@ -10,14 +10,6 @@ const (
 	JOUEPLEIN                     // La cellule est jouée pleine
 )
 
-// TabJeu contient les cellules du jeu sous forme de slice 2D
-type LigneJeu []Cellule
-type TabJeu []LigneJeu
-type BlocCount []int
-type BlocCountList []BlocCount
-type TransposedBlocCount []int    // pour l'affichage en mode console
-
-const SEP = ""
 
 func (c Cellule) EstPlein() bool { return c&PLEIN == PLEIN }
 func (c *Cellule) Remplit() { *c = *c | PLEIN }
