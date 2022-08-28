@@ -6,3 +6,4 @@ github PAT.txt
 
 *.prof
 *.test
+__debug_bin
