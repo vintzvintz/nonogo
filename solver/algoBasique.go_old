@@ -1,3 +1,4 @@
+
 package solver
 
 import (
@@ -98,7 +99,6 @@ func (mi *multiIndex) incrémente() bool {
 	}
 	return overflow
 }
-
 
 
 func makeTache(taille int,
