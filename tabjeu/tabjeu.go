@@ -29,32 +29,29 @@ type Diff [][]bool           // comparaison de deux tabjeu
 const SEP = ""
 
 // NewTabJeu crée un nouveau tableau de jeu
-func NewTabJeu(taille int, ratioRemplissage float32, seed int64) TabJeu {
+func NewTabJeu(taille int, nbPlein int, seed int64) TabJeu {
 
 	// alloue toutes les cellules en une seule fois
 	cellules := make(LigneJeu, taille*taille)
 
-	if ratioRemplissage > 0 {
-		// initialise le pseudo-random
-		if seed == 0 {
-			seed = time.Now().Unix()
-		}
-		rand.Seed(seed)
+	// initialise le pseudo-random
+	if seed == 0 {
+		seed = time.Now().Unix()
+	}
+	rand.Seed(seed)
 
-		// calcule le nb de cellules à remplir
-		nbPlein := int(float32(taille*taille) * ratioRemplissage)
-		if nbPlein > taille*taille {
-			panic("Ratio de remplissage trop élevé")
-		}
+	if nbPlein > taille*taille {
+		panic("Ratio de remplissage trop élevé")
+	}
 
-		// remplit le nb de cellule requis
-		for n := 0; n < nbPlein; n++ {
-			for {
-				i := rand.Intn(len(cellules))
-				if !cellules[i].EstPlein() {
-					cellules[i].Remplit()
-					break
-				}
+	// remplit le nb de cellule requis
+	for n := 0; n < nbPlein; n++ {
+		// recommence tant qu'on ne tombe pas sur une cellule vide
+		for {
+			i := rand.Intn(len(cellules))
+			if !cellules[i].EstPlein() {
+				cellules[i].Remplit()
+				break
 			}
 		}
 	}
@@ -76,6 +73,20 @@ func (tj TabJeu) ReveleVides(ambigu Diff) {
 			}
 		}
 	}
+}
+
+func (tj TabJeu) ComptePlein() (joué, total int) {
+	for _, ligne := range tj {
+		for _, cell := range ligne {
+			if cell.EstPlein() {
+				total++
+				if cell.EstRévélé() || cell.EstJouéPlein() {
+					joué++
+				}
+			}
+		}
+	}
+	return joué, total
 }
 
 func (src TabJeu) Copy() (dst TabJeu) {
