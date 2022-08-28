@@ -11,12 +11,13 @@ const (
 )
 
 
-func (c Cellule) EstPlein() bool { return c&PLEIN == PLEIN }
+// TODO : ne pas exporter ces accesseurs 
 func (c *Cellule) Remplit() { *c = *c | PLEIN }
-
-func (c Cellule) EstRévélé() bool { return c&REVELE == REVELE }
 func (c *Cellule) Révèle() { *c = *c | REVELE }
 
+// Accesseurs exportés 
+func (c Cellule) EstPlein() bool { return c&PLEIN == PLEIN }
+func (c Cellule) EstRévélé() bool { return c&REVELE == REVELE }
 func (c Cellule) EstJouéPlein() bool { return c & JOUEPLEIN == JOUEPLEIN}
 func (c Cellule) EstJouéVide() bool { return c & JOUEVIDE == JOUEVIDE}
 func (c *Cellule) JoueAucun() { *c = *c &^ ( JOUEVIDE | JOUEPLEIN) }

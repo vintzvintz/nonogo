@@ -88,7 +88,16 @@
         {{ range .Blocs }} <div class="bloc">{{.}}</div> {{ end }}
     </div>
     {{range .Cellules}}
-    <div class="cell"><a href="{{.Lien}}"><img src="images/{{.Img}}"></a></div>
+        {{ template "cellule" . }}
+    {{ end }}
+{{ end }}
+
+
+{{ define "cellule" }}
+    {{ if .Lien }}
+    <div class="cell"><a href="action={{.Lien}}&ligne={{.Ligne}}&col={{.Colonne}}"><img src="images/{{.Img}}"></a></div>
+    {{ else }}
+    <div class="cell"><img src="images/{{.Img}}"></div>
     {{ end }}
 {{ end }}
 
@@ -109,13 +118,13 @@
 <body>
 <div class="wrapper">
     <div class="header">
- Contenu du header
+ <p>{{.NbJouéPlein}}/{{.NbPlein}}</p>
     </div>
 
     {{ template "tabjeu" . }}
 
     <div class="footer">
-        Contenu du footer
+        <p>Seed={{.Seed}}</p>
     </div>
 
 </div>
