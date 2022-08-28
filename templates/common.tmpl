@@ -1,0 +1,131 @@
+{{define "head"}}
+<head>
+    <meta charset="utf-8"/>
+    <title>Nonogram</title>
+    <style>
+{{template "css" .  }}
+    </style>
+</head>
+{{  end  }}
+
+
+
+{{define "css"}}
+.wrapper {
+    width: 90%;
+    margin: 0.5em auto;
+    text-align: center;
+    background-color: aliceblue;
+}
+.header {
+    height: 8em;
+    padding: 20px;
+}
+.footer {
+    height: 5em;
+    background-color: rgb(214, 182, 140);
+}
+.tabjeu {
+    /*width:96%;*/
+    margin:auto;
+    border: 10px;
+    border-color: black;
+    background-color:lavenderblush;
+}
+.cellules {
+    display: grid;
+    width: fit-content;
+    margin:auto;
+    padding:5%; 
+    grid-template-columns: auto repeat({{.Taille}},1fr);
+    grid-template-rows: auto repeat({{.Taille}},1fr);
+    grid-gap: 1px;
+}
+.bloc_c {
+    background-color:pink;
+    margin: 2px auto;
+}
+.bloc_l {
+    background-color:pink;
+    margin-left: auto;
+    align-self: center; 
+}
+.bloc_l .bloc {
+    display: inline-block;
+    line-height:1.5em;
+    text-align: right;
+}
+.bloc{ 
+    padding:0.3em;
+}
+.cell {
+    border: solid 1px;
+    border-color: black;
+    width:{{.DimensionCellules}}vw;
+    line-height: {{.DimensionCellules}}vw;
+    /*margin: 1px;*/
+    padding: 3px;
+}
+.premiere{
+    border-style: none;
+}
+{{end}}
+
+
+
+{{define "ligne_premiere"}}
+    <div class="cell premiere"> </div>
+    {{- range . }}
+    <div class="bloc_c">
+        {{ range . }}  <div class="bloc">{{.}}</div>  {{ end }}
+    </div>
+    {{- end }}
+{{ end }}
+
+
+{{ define "ligne" }}
+    <div class="bloc_l">
+        {{ range .Blocs }} <div class="bloc">{{.}}</div> {{ end }}
+    </div>
+    {{range .Cellules}}
+    <div class="cell"><a href="{{.Lien}}"><img src="images/{{.Img}}"></a></div>
+    {{ end }}
+{{ end }}
+
+
+{{ define "tabjeu" }}
+<div class="tabjeu">
+    <div class="cellules">
+{{ template "ligne_premiere" .PremiereLigne }}
+{{ range .Lignes }}
+{{ template "ligne" . }}
+{{ end }}
+    </div>
+</div>
+{{ end }}
+
+
+{{define "body"}}
+<body>
+<div class="wrapper">
+    <div class="header">
+ Contenu du header
+    </div>
+
+    {{ template "tabjeu" . }}
+
+    <div class="footer">
+        Contenu du footer
+    </div>
+
+</div>
+</body>
+{{end}}
+
+
+{{ define "page" }}
+<html>
+{{ template "head" .}}
+{{ template "body" .}}
+</html>
+{{ end }}
