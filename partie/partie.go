@@ -1,54 +1,82 @@
 package partie
 
 import (
-	"fmt"
-	"runtime"
-	"time"
 	"bytes"
+	"fmt"
+	"log"
+	"runtime"
 	"text/template"
+	"time"
 
 	"vintz.fr/nonogram/solver"
 	"vintz.fr/nonogram/tabjeu"
 )
 
-
 type Partie struct {
-	Seed int
-	TauxRemplissage float32
-	Tj tabjeu.TabJeu
+	seed int64
+	tj tabjeu.TabJeu
 }
 
 
-type RenderPartie struct {
-	Taille int
-	DimensionCellules int
-	PremiereLigne tabjeu.BlocCountList
-	Lignes []RenderLigne
+func NewPartie(size int, nbPlein int, seed int64) Partie {
+
+	tj_brut := tabjeu.NewTabJeu(size, nbPlein, seed)
+	tj := desambigueTabJeu(tj_brut, -1)
+
+	return Partie{seed, tj}
 }
 
-type RenderLigne struct {
-	Blocs tabjeu.BlocCount
-	Cellules []RenderCellule
-}
-
-type RenderCellule struct {
-	Col,Ligne int
-	Img string
-	Lien string
+func NewPartieDefault() Partie {
+	nbPlein := int(tabjeu.DEFAULT_RATIO * tabjeu.DEFAULT_SIZE * tabjeu.DEFAULT_SIZE)
+	return NewPartie(tabjeu.DEFAULT_SIZE, nbPlein, tabjeu.DEFAULT_SEED)
 }
 
 
-func newLevel(size int, ratio float32, seed int64) tabjeu.TabJeu {
-	tj := tabjeu.NewTabJeu(size, ratio, seed)
-	return desambigueTabJeu(tj, -1)
-}
+func (p *Partie) Clique(ligne, colonne int) {
 
-func NewDefault() Partie {
-	return Partie{
-		Seed:  tabjeu.DEFAULT_SEED,
-		TauxRemplissage: tabjeu.DEFAULT_RATIO,
-		Tj: newLevel(tabjeu.DEFAULT_SIZE, tabjeu.DEFAULT_RATIO, tabjeu.DEFAULT_SEED),
+	// ignore les coordonnées invalides
+	if( ligne<0 || ligne >= len(p.tj) ){
+		log.Printf("Ignore Clique() sur ligne %d invalide\n", ligne)
+		return
 	}
+	if( colonne<0 || colonne >= len(p.tj) ){
+		log.Printf("Ignore Clique() sur colonne %d invalide\n", colonne)
+		return
+	}
+
+	c := &p.tj[ligne][colonne]
+
+	// aucune action sur les cellules révélées
+	if c.EstRévélé() {
+		log.Printf("Ignore Clique() sur cellule (%d,%d) révélée\n", ligne, colonne)
+		return
+	}
+	// cycle aucun -> plein -> vide
+	if c.EstJouéPlein() {
+		c.JoueVide()
+	} else if c.EstJouéVide() {
+		c.JoueAucun()
+	} else {
+		c.JouePlein()
+	}
+}
+
+
+func (p Partie) Html() (*bytes.Buffer, error) {
+
+	buf := bytes.NewBuffer(nil)
+
+	tmpl, err := template.ParseFiles("templates/common.tmpl")
+	if err != nil {
+		return buf, err
+	}
+
+	err = tmpl.ExecuteTemplate(buf, "page", RenderPartie(p))
+	if err != nil {
+		return nil, err
+	}
+
+	return buf, nil
 }
 
 func desambigueTabJeu(tj tabjeu.TabJeu, nbWorkers int) (valide tabjeu.TabJeu) {
@@ -72,69 +100,9 @@ func desambigueTabJeu(tj tabjeu.TabJeu, nbWorkers int) (valide tabjeu.TabJeu) {
 
 	duree := time.Since(startTime)
 	fmt.Printf(" %d solutions et %d cellules ambigües. %d workers en %v\n", nbSol, diff.Count(), nbWorkers, duree)
-	
+
 	valide = tj.Copy()
 	valide.ReveleVides(diff)
 
 	return valide
-}
-
-
-func (p Partie) prepareRenderData() (r *RenderPartie) {
-
-	blocsLignes := p.Tj.CompteBlocs( tabjeu.LIGNE )
-	
-	var rLignes []RenderLigne
-	for l := range p.Tj {
-		var rCells []RenderCellule
-
-		for c, cell := range p.Tj[l] {
-			var img string
-			switch cell.Image() {
-				case tabjeu.IMG_AUCUN: img = "vide.svg"
-				case tabjeu.IMG_VIDE: img = "croix.svg"
-				case tabjeu.IMG_PLEIN: img = "carré.svg"
-			default: panic( "tabjeu.Image() renvoie une valeur inattendue")
-			}
-			rCell := RenderCellule{ 
-				Ligne: l,
-				Col: c,
-				Img: img,
-				Lien: "clic",
-			}
-			rCells = append(rCells, rCell)
-		}
-
-		rLigne := RenderLigne{ 
-			Blocs: blocsLignes[l],
-			Cellules: rCells,
-		}
-		rLignes = append(rLignes, rLigne)
-	}
-
-	return &RenderPartie{
-		Taille:len(p.Tj),
-		DimensionCellules: 6,
-		PremiereLigne: p.Tj.CompteBlocs( tabjeu.COLONNE ),
-		Lignes: rLignes,
-		}
-}
-
-func (p Partie) Html() (*bytes.Buffer, error) {
-
-	buf := bytes.NewBuffer(nil)
-
-	tmpl, err := template.ParseFiles("templates/common.tmpl")
-	if err!=nil {
-		return buf, err
-	}
-
-	data  := p.prepareRenderData()
-
-	err = tmpl.ExecuteTemplate(buf, "page", data)
-	if err!=nil {
-		return nil, err
-	}
-
-	return buf, nil
 }
