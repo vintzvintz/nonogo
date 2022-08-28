@@ -7,44 +7,10 @@ import (
 	"time"
 )
 
-const DEFAULT_SIZE = 17
+const DEFAULT_SIZE = 10
 const DEFAULT_SEED = 1006
 const DEFAULT_RATIO = 0.45
 
-
-type Cellule uint8
-
-const (
-	PLEIN     Cellule = 1 << iota // Etat de base de la cellule : vide ou plein
-	REVELE                        // L'état est révélé dès le début du jeu
-	JOUEVIDE                      // La cellule est jouée vide
-	JOUEPLEIN                     // La cellule est jouée pleine
-)
-
-// TabJeu contient les cellules du jeu sous forme de slice 2D
-type LigneJeu []Cellule
-type TabJeu []LigneJeu
-type BlocCount []int
-type BlocCountList []BlocCount
-type TransposedBlocCount []int    // pour l'affichage seulement
-
-const SEP = ""
-
-func (c Cellule) EstPlein() bool {
-	return c&PLEIN == PLEIN
-}
-
-func (c *Cellule) Remplit() {
-	*c = *c | PLEIN
-}
-
-func (c Cellule) EstRévélé() bool {
-	return c&REVELE == REVELE
-}
-
-func (c *Cellule) Révèle() {
-	*c = *c | REVELE
-}
 
 // NewTabJeu crée un nouveau tableau de jeu
 func NewTabJeu(taille int, ratioRemplissage float32, seed int64) TabJeu {
@@ -143,16 +109,6 @@ func (lj LigneJeu) String() string {
 		str[i] = cell.String()
 	}
 	return "[" + strings.Join(str, SEP) + "]"
-}
-
-func (c Cellule) String() string {
-	if c.EstRévélé() {
-		return "XX"
-	}
-	if c.EstPlein() {
-		return "\u2588\u2588"
-	}
-	return "  " // deux espaces pour une cellule vide
 }
 
 // transposeSeqColonnes convertit en lignes les comptes de séquences en colonne
