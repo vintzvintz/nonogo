@@ -12,6 +12,16 @@ import (
 	"vintz.fr/nonogram/tabjeu"
 )
 
+type Etat int
+
+const (
+	PAS_COMMENCE Etat = iota
+	EN_COURS
+	GAGNE
+	PERDU
+)
+
+
 type Partie struct {
 	seed int64
 	tj tabjeu.TabJeu
@@ -27,7 +37,7 @@ func NewPartie(size int, nbPlein int, seed int64) Partie {
 }
 
 func NewPartieDefault() Partie {
-	nbPlein := int(tabjeu.DEFAULT_RATIO * tabjeu.DEFAULT_SIZE * tabjeu.DEFAULT_SIZE)
+	var nbPlein int = tabjeu.DEFAULT_RATIO * tabjeu.DEFAULT_SIZE * tabjeu.DEFAULT_SIZE
 	return NewPartie(tabjeu.DEFAULT_SIZE, nbPlein, tabjeu.DEFAULT_SEED)
 }
 
