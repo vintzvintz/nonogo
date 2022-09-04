@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"net/http"
 	"strconv"
+	"time"
 
 	"vintz.fr/nonogram/partie"
 )
@@ -19,7 +20,6 @@ func ImagesHandler( path, dir string ) http.Handler {
 }
 
 
-
 type Session struct {
 	sid int64
 	etat partie.Etat
@@ -29,13 +29,15 @@ type Session struct {
 
 
 type SessionStore struct {
+	sidGenerator rand.Source
 	sessions map[int64]*Session
 }
 
 
 func NewSessionStore() *SessionStore {
-	sessions := make( map[int64]*Session )
-	return &SessionStore{sessions:sessions}
+	return &SessionStore{
+		sidGenerator: rand.NewSource( time.Now().UnixNano() ),
+		sessions:make( map[int64]*Session ) }
 }
 
 
@@ -43,13 +45,12 @@ func (store *SessionStore) getSession( sid int64 ) *Session {
 
 	s, exists := store.sessions[sid]
 
-
 	if exists {
 		log.Printf("Session %d existante", sid)
 	}
-
 	if !exists {
-		sid = rand.Int63n(1<<62)+1   // non-null random integer
+		log.Printf("Session %d inexistante", sid)
+		sid = (store.sidGenerator.Int63()>>1) + 1   // non-null random integer
 		s = &Session{sid: sid}
 		store.sessions[sid] = s
 		log.Printf("Session %d créée", sid)
@@ -61,11 +62,12 @@ func (store *SessionStore) getSession( sid int64 ) *Session {
 }
 
 
-func MakeNonoHandler() http.HandlerFunc {
+func MakeNonoHandler( ) http.HandlerFunc {
 
 	sessionStore := NewSessionStore()
 
-	h := func (w http.ResponseWriter, req *http.Request) {
+	// le sessionStore est capturé dans le handler
+	handler := func (w http.ResponseWriter, req *http.Request) {
 
 		// recupere le sid dans SESSION_COOKIE dans la requete
 		var sid int64
@@ -73,7 +75,7 @@ func MakeNonoHandler() http.HandlerFunc {
 		if err == nil {
 			sid, err = strconv.ParseInt(cookie.Value, 10, 64)
 			if err!=nil {
-				log.Printf("Session '%v' invalide : %v", cookie.Value, err)
+				log.Printf("Cookie de session '%v' invalide : %v", cookie.Value, err)
 			}
 		}
 
@@ -84,7 +86,7 @@ func MakeNonoHandler() http.HandlerFunc {
 		nonoHandleFunc(s, w, req )
 		}
 
-	return h
+	return handler
 }
 
 func nonoHandleFunc(s *Session, w http.ResponseWriter, req *http.Request)  {
