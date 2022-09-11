@@ -9,7 +9,6 @@
 {{  end  }}
 
 
-
 {{define "css"}}
 .wrapper {
     width: 90%;
@@ -26,7 +25,6 @@
     background-color: rgb(214, 182, 140);
 }
 .tabjeu {
-    /*width:96%;*/
     margin:auto;
     border: 10px;
     border-color: black;
@@ -87,20 +85,13 @@
     <div class="bloc_l">
         {{ range .Blocs }} <div class="bloc">{{.}}</div> {{ end }}
     </div>
-    {{range .Cellules}}
-        {{ template "cellule" . }}
-    {{ end }}
+    {{- range .Cellules -}} {{- template "cellule" . -}} {{- end -}} 
 {{ end }}
 
 
-{{ define "cellule" }}
-    {{ if .Lien }}
-    <div class="cell"><a href="action={{.Lien}}&ligne={{.Ligne}}&col={{.Colonne}}"><img src="images/{{.Img}}"></a></div>
-    {{ else }}
-    <div class="cell"><img src="images/{{.Img}}"></div>
-    {{ end }}
-{{ end }}
-
+{{- define "cellule" }}
+    <div class="cell" data-ligne="{{.Ligne}}" data-col="{{.Colonne}}"><img src="images/{{.Img}}"/></div>
+{{- end }}
 
 {{ define "tabjeu" }}
 <div class="tabjeu">
@@ -128,11 +119,13 @@
     </div>
 
 </div>
+<script src="js/nono.js"></script>
 </body>
 {{end}}
 
 
 {{ define "page" }}
+<!DOCTYPE html>
 <html>
 {{ template "head" .}}
 {{ template "body" .}}

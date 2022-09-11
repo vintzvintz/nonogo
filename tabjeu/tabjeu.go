@@ -7,9 +7,6 @@ import (
 	"time"
 )
 
-const DEFAULT_SIZE = 10
-const DEFAULT_SEED = 1006
-const DEFAULT_RATIO = 0.45
 
 // Direction de comptage des séquences
 type Direction int
@@ -69,7 +66,7 @@ func (tj TabJeu) ReveleVides(ambigu Diff) {
 		for j := range tj[i] {
 			if ambigu[i][j] && !tj[i][j].EstPlein() {
 				tj[i][j].Révèle()
-				fmt.Printf("Révèle cellule (%d,%d)\n", i, j)
+//				fmt.Printf("Révèle cellule (%d,%d)\n", i, j)
 			}
 		}
 	}

@@ -14,7 +14,6 @@ type RenderLigne struct {
 type RenderCellule struct {
 	Colonne, Ligne int
 	Img            string
-	Lien           string
 }
 
 func (p RenderPartie) Taille() int {
@@ -54,16 +53,10 @@ func (p RenderPartie) Lignes() []RenderLigne {
 				panic("tabjeu.Image() renvoie une valeur inattendue")
 			}
 
-			var lien string
-			if !cell.EstRévélé() {
-				lien = ACTION_CLIC
-			}
-
 			rCell := RenderCellule{
 				Ligne:   l,
 				Colonne: c,
 				Img:     img,
-				Lien:    lien,
 			}
 			rCells = append(rCells, rCell)
 		}

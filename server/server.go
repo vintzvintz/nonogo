@@ -15,7 +15,7 @@ import (
 
 const SESSION_COOKIE = "NonoSession"
 
-func ImagesHandler( path, dir string ) http.Handler {
+func StaticFileHandler( path, dir string ) http.Handler {
 	return http.StripPrefix( path, http.FileServer(http.Dir(dir)) )
 }
 
@@ -45,11 +45,7 @@ func (store *SessionStore) getSession( sid int64 ) *Session {
 
 	s, exists := store.sessions[sid]
 
-	if exists {
-		log.Printf("Session %d existante", sid)
-	}
 	if !exists {
-		log.Printf("Session %d inexistante", sid)
 		sid = (store.sidGenerator.Int63()>>1) + 1   // non-null random integer
 		s = &Session{sid: sid}
 		store.sessions[sid] = s
@@ -61,6 +57,47 @@ func (store *SessionStore) getSession( sid int64 ) *Session {
 	return s
 }
 
+type Action struct {
+	bouton string
+	ligne int
+	colonne int
+}
+
+
+
+func parseParamInt( req *http.Request, nom string ) int {
+
+	s := req.FormValue( nom )
+	if s=="" {
+		return -1
+	}
+
+	i, err := strconv.ParseInt( s ,10, 31 )
+	if err!= nil {
+		return -1
+	}
+	return int(i)
+}
+
+
+func decodeAction ( req *http.Request ) (a Action) {
+	
+	req.ParseForm()
+
+	btn := req.FormValue( partie.PARAM_BOUTON )
+	if btn!=partie.BOUTON_DROIT && btn!=partie.BOUTON_GAUCHE {
+		return a
+	}
+
+	l := parseParamInt(req, partie.PARAM_LIGNE)
+	c := parseParamInt(req, partie.PARAM_COL)
+	if l>=0 && c>=0 {
+		a.bouton = btn
+		a.ligne = l
+		a.colonne=c
+	}
+	return a
+}
 
 func MakeNonoHandler( ) http.HandlerFunc {
 
@@ -82,6 +119,9 @@ func MakeNonoHandler( ) http.HandlerFunc {
 		// Recupere la session existante ou cree une nouvelle
 		s := sessionStore.getSession(sid)
 
+		// loggue la requete
+		log.Printf( "%s %s", req.Method, req.RequestURI )
+
 		// appelle le handler 
 		nonoHandleFunc(s, w, req )
 		}
@@ -90,7 +130,6 @@ func MakeNonoHandler( ) http.HandlerFunc {
 }
 
 func nonoHandleFunc(s *Session, w http.ResponseWriter, req *http.Request)  {
-
 
 	if s.etat == partie.PAS_COMMENCE {
 		s.partie = partie.NewPartieDefault()
@@ -101,9 +140,18 @@ func nonoHandleFunc(s *Session, w http.ResponseWriter, req *http.Request)  {
 		Name: SESSION_COOKIE,
 		Value: fmt.Sprintf("%d", s.sid),
 		Path: "/",
+		SameSite: http.SameSiteStrictMode,
 	}
 
 	http.SetCookie( w, &cookie )
+
+	a := decodeAction(req)
+	switch a.bouton {
+	case partie.BOUTON_GAUCHE: 
+		s.partie.Clique(partie.JOUE_PLEIN, a.ligne, a.colonne)
+	case partie.BOUTON_DROIT: 
+		s.partie.Clique(partie.JOUE_VIDE, a.ligne, a.colonne)
+	}
 
 	var err error
 	var buf *bytes.Buffer

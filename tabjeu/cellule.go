@@ -21,8 +21,23 @@ func (c Cellule) EstRévélé() bool { return c&REVELE == REVELE }
 func (c Cellule) EstJouéPlein() bool { return c & JOUEPLEIN == JOUEPLEIN}
 func (c Cellule) EstJouéVide() bool { return c & JOUEVIDE == JOUEVIDE}
 func (c *Cellule) JoueAucun() { *c = *c &^ ( JOUEVIDE | JOUEPLEIN) }
-func (c *Cellule) JoueVide() { *c = *c | JOUEVIDE ;	*c = *c &^ JOUEPLEIN }
-func (c *Cellule) JouePlein() {	*c = *c | JOUEPLEIN; *c = *c &^ JOUEVIDE }
+func (c *Cellule) JoueVide() { c.JoueAucun(); *c = *c | JOUEVIDE }
+func (c *Cellule) JouePlein() {	c.JoueAucun(); *c = *c | JOUEPLEIN }
+
+func (c *Cellule) ToggleVide() { 
+	if c.EstJouéVide() {
+		c.JoueAucun()
+	} else {
+		c.JoueVide()
+	}
+}
+func (c *Cellule) TogglePlein() { 
+	if c.EstJouéPlein() {
+		c.JoueAucun()
+	} else {
+		c.JouePlein()
+	}
+}
 
 
 const (

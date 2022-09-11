@@ -1,7 +1,6 @@
 package main
 
-import (
-	"io"
+import (	
 	"log"
 	"net/http"
 
@@ -14,16 +13,12 @@ func main() {
 
 func real_main() {
 
-
-	helloHandler := func(w http.ResponseWriter, req *http.Request) {
-		io.WriteString(w, "Hello, world!\n")
-	}
-
 //	imagesHandler := http.StripPrefix("/images/",http.FileServer(http.Dir("images/")))
+//	http.HandleFunc("/hello", helloHandler)
 
-	http.HandleFunc("/hello", helloHandler)
-	http.Handle ("/images/", server.ImagesHandler( "/images/", "images/") )
-	http.HandleFunc("/", server.MakeNonoHandler())
+	http.Handle ("/images/", server.StaticFileHandler( "/images/", "images/") )
+	http.Handle ("/js/", server.StaticFileHandler( "/js/", "js/") )
+	http.HandleFunc("/partie", server.MakeNonoHandler())
 	
 
 	addr := ":8080"

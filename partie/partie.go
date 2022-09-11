@@ -7,6 +7,7 @@ import (
 	"runtime"
 	"text/template"
 	"time"
+	"sync"
 
 	"vintz.fr/nonogram/solver"
 	"vintz.fr/nonogram/tabjeu"
@@ -22,9 +23,19 @@ const (
 )
 
 
+const (
+	JOUE_VIDE = iota
+	JOUE_PLEIN
+)
+
+const DEFAULT_SIZE = 10
+const DEFAULT_SEED = 1005
+const DEFAULT_RATIO = 0.45
+
 type Partie struct {
 	seed int64
 	tj tabjeu.TabJeu
+	lock *sync.Mutex
 }
 
 
@@ -33,16 +44,21 @@ func NewPartie(size int, nbPlein int, seed int64) Partie {
 	tj_brut := tabjeu.NewTabJeu(size, nbPlein, seed)
 	tj := desambigueTabJeu(tj_brut, -1)
 
-	return Partie{seed, tj}
+	return Partie{
+		seed:seed,
+		tj:tj,
+		lock: new(sync.Mutex) }
 }
 
 func NewPartieDefault() Partie {
-	var nbPlein int = tabjeu.DEFAULT_RATIO * tabjeu.DEFAULT_SIZE * tabjeu.DEFAULT_SIZE
-	return NewPartie(tabjeu.DEFAULT_SIZE, nbPlein, tabjeu.DEFAULT_SEED)
+	var nbPlein int = DEFAULT_RATIO * DEFAULT_SIZE * DEFAULT_SIZE
+	return NewPartie(DEFAULT_SIZE, nbPlein, DEFAULT_SEED)
 }
 
 
-func (p *Partie) Clique(ligne, colonne int) {
+func (p *Partie) Clique(action int, ligne, colonne int) {
+		p.lock.Lock()
+	defer p.lock.Unlock()
 
 	// ignore les coordonnées invalides
 	if( ligne<0 || ligne >= len(p.tj) ){
@@ -61,16 +77,13 @@ func (p *Partie) Clique(ligne, colonne int) {
 		log.Printf("Ignore Clique() sur cellule (%d,%d) révélée\n", ligne, colonne)
 		return
 	}
-	// cycle aucun -> plein -> vide
-	if c.EstJouéPlein() {
-		c.JoueVide()
-	} else if c.EstJouéVide() {
-		c.JoueAucun()
-	} else {
-		c.JouePlein()
+
+	// Change l'état de la cellule selon l'action demandée et selon l'état précédent
+	switch action {
+	case JOUE_PLEIN : c.TogglePlein()
+	case JOUE_VIDE : c.ToggleVide()
 	}
 }
-
 
 func (p Partie) Html() (*bytes.Buffer, error) {
 
@@ -109,7 +122,7 @@ func desambigueTabJeu(tj tabjeu.TabJeu, nbWorkers int) (valide tabjeu.TabJeu) {
 	}
 
 	duree := time.Since(startTime)
-	fmt.Printf(" %d solutions et %d cellules ambigües. %d workers en %v\n", nbSol, diff.Count(), nbWorkers, duree)
+	fmt.Printf("%d solutions et %d cellules ambigües. %d workers en %v\n", nbSol, diff.Count(), nbWorkers, duree)
 
 	valide = tj.Copy()
 	valide.ReveleVides(diff)

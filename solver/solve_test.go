@@ -8,6 +8,10 @@ import (
 	TJ "vintz.fr/nonogram/tabjeu"
 )
 
+const DEFAULT_SIZE = 10
+const DEFAULT_SEED = 1006
+const DEFAULT_RATIO = 0.45
+
 
 func compareBlocList(blocs1, blocs2 []TJ.BlocCount) bool {
 
@@ -30,7 +34,6 @@ func compareBlocList(blocs1, blocs2 []TJ.BlocCount) bool {
 }
 
 
-
 func checkSolution(sol TJ.TabJeu, blocsLignes, blocsColonnes TJ.BlocCountList) bool {
 	lignesOk := compareBlocList(blocsLignes, sol.CompteBlocs(TJ.LIGNE))
 	colsOk := compareBlocList(blocsColonnes, sol.CompteBlocs(TJ.COLONNE))
@@ -41,8 +44,8 @@ func checkSolution(sol TJ.TabJeu, blocsLignes, blocsColonnes TJ.BlocCountList) b
 func TestConcurrent(t *testing.T) {
 
 	size := 15
-	nbPlein := int(TJ.DEFAULT_RATIO * float32(size))
-	tj := TJ.NewTabJeu(size, nbPlein, TJ.DEFAULT_SEED)
+	nbPlein := int(DEFAULT_RATIO * float32(size))
+	tj := TJ.NewTabJeu(size, nbPlein, DEFAULT_SEED)
 	fmt.Println(tj)
 
 	bcLigne := tj.CompteBlocs(TJ.LIGNE)
